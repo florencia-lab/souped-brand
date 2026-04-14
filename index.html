@@ -1,0 +1,2218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Souped — Brand Studio Game</title>
+  <meta name="description" content="Go from zero to a complete brand identity through 20 strategic questions. No forms. Just games.">
+  <meta name="theme-color" content="#080025">
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="icon" type="image/png" href="../favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://use.typekit.net/vdd7qlu.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream:'#FFF8F0','cream-mid':'#F3EBE0','cream-dark':'#E5D9CA',
+            dark:'#080025','dark-mid':'#14142E','dark-card':'#1C1C38',
+            orange:'#FF6B35','orange-dk':'#E03328','orange-lt':'#FF6B5E',
+            amber:'#FFBB33','amber-dk':'#E5A020',
+            violet:'#7B68EE','violet-dk':'#6350D8','violet-lt':'#9B8AF5',
+            ink:'#080025','ink-mid':'#2A2A4A','ink-muted':'#5A5A78',
+            sage:'#16A34A',mint:'#E8F5EC',
+          },
+          fontFamily: {
+            display:['neighbor','sans-serif'],
+            body:['"DM Sans"','sans-serif'],
+            mono:['"JetBrains Mono"','monospace'],
+          },
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @layer reset, tokens, base, components, utilities;
+
+    @layer reset {
+      *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    }
+
+    @layer tokens {
+      :root {
+        --bg: #080025;
+        --bg-mid: #14142E;
+        --bg-card: #1C1C38;
+        --cream: #FFF8F0;
+        --cream-mid: #F3EBE0;
+        --orange: #FF6B35;
+        --orange-dk: #E03328;
+        --amber: #FFBB33;
+        --violet: #7B68EE;
+        --sage: #16A34A;
+        --transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-med: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+    }
+
+    @layer base {
+      html{scroll-behavior:smooth}
+      body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--cream);overflow-x:hidden;-webkit-font-smoothing:antialiased;min-height:100vh}
+      .font-display{font-family:neighbor,sans-serif;font-feature-settings:"ss01" 1,"ss02" 1,"ss03" 1,"ss04" 1,"ss05" 1}
+
+      :focus-visible{outline:2px solid var(--orange);outline-offset:3px;border-radius:6px}
+    }
+
+    @layer components {
+      /* Grain overlay */
+      body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.1;mix-blend-mode:overlay;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")}
+
+      /* Mesh background */
+      .mesh-bg{
+        position:fixed;inset:0;z-index:0;
+        background:
+          radial-gradient(ellipse 60% 55% at 5% 75%, rgba(60,20,220,.35) 0%, transparent 55%),
+          radial-gradient(ellipse 70% 60% at 25% 30%, rgba(255,187,51,.2) 0%, transparent 50%),
+          radial-gradient(ellipse 80% 70% at 60% 20%, rgba(255,100,20,.2) 0%, transparent 50%),
+          var(--bg);
+      }
+
+      /* Phase progress bar */
+      .phase-bar{height:3px;background:rgba(255,255,255,.06);border-radius:9999px;overflow:hidden}
+      .phase-fill{height:100%;background:linear-gradient(90deg,var(--amber),var(--orange));border-radius:9999px;transition:width var(--transition-med)}
+
+      /* Game card */
+      .game-card{
+        background:rgba(255,255,255,.04);
+        border:1px solid rgba(255,255,255,.08);
+        border-radius:20px;
+        padding:32px;
+        transition:transform var(--transition-fast),box-shadow var(--transition-fast),border-color var(--transition-fast);
+      }
+      .game-card:hover{
+        transform:translateY(-2px);
+        border-color:rgba(255,107,53,.15);
+        box-shadow:0 16px 40px rgba(0,0,0,.3);
+      }
+      .game-card.selected{
+        border-color:var(--orange);
+        box-shadow:0 0 0 1px var(--orange),0 16px 40px rgba(255,107,53,.15);
+        transform:translateY(-4px);
+      }
+      .game-card.selected::after{
+        content:'';display:inline-block;width:.8em;height:.8em;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M4.5 12.75l6 6 9-13.5'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M4.5 12.75l6 6 9-13.5'/%3E%3C/svg%3E") center/contain no-repeat;
+        position:absolute;
+        top:12px;
+        right:16px;
+        width:28px;
+        height:28px;
+        background:var(--orange);
+        border-radius:50%;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:.8rem;
+        font-weight:700;
+        color:var(--bg);
+      }
+
+      /* Mad Lib — inline contenteditable spans */
+      .madlib-blank{
+        border-bottom:2px solid rgba(255,255,255,.2);
+        color:var(--orange);
+        font-family:inherit;
+        font-size:inherit;
+        font-weight:600;
+        padding:2px 4px;
+        min-width:80px;
+        display:inline-block;
+        outline:none;
+        transition:border-color 200ms cubic-bezier(0.4,0,0.2,1);
+        word-break:break-word;
+        overflow-wrap:break-word;
+      }
+      .madlib-blank:focus{
+        border-bottom-color:var(--orange);
+      }
+      .madlib-blank:empty::before{
+        content:attr(data-placeholder);
+        color:rgba(255,255,255,.2);
+        font-weight:400;
+        font-style:italic;
+        pointer-events:none;
+      }
+      /* Standalone inputs (not inside sentences) */
+      input.madlib-input{
+        border:none;
+        border-bottom:2px solid rgba(255,255,255,.2);
+        background:transparent;
+        color:var(--orange);
+        font-family:inherit;
+        font-size:inherit;
+        font-weight:600;
+        padding:4px 6px;
+        width:100%;
+        max-width:100%;
+        outline:none;
+        transition:border-color 200ms cubic-bezier(0.4,0,0.2,1);
+      }
+      input.madlib-input:focus{
+        border-bottom-color:var(--orange);
+      }
+      input.madlib-input::placeholder{
+        color:rgba(255,255,255,.2);
+        font-weight:400;
+        font-style:italic;
+      }
+      .spec-card, .game-card{
+        overflow-wrap:break-word;
+        word-break:break-word;
+      }
+      .game-card, .spec-card{
+        overflow:visible;
+      }
+
+      /* Scenario card (pick a card) */
+      .scenario-card{
+        position:relative;
+        background:rgba(255,255,255,.03);
+        border:1px solid rgba(255,255,255,.08);
+        border-radius:16px;
+        padding:24px;
+        cursor:pointer;
+        transition:all var(--transition-fast);
+        user-select:none;
+      }
+      .scenario-card:hover{
+        background:rgba(255,255,255,.06);
+        border-color:rgba(255,255,255,.15);
+        transform:translateY(-2px);
+      }
+      .scenario-card.picked{
+        background:rgba(255,107,53,.08);
+        border-color:var(--orange);
+        box-shadow:0 0 0 1px var(--orange);
+      }
+
+      /* Token counter (auction) */
+      .token-badge{
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        padding:6px 14px;
+        border-radius:9999px;
+        font-size:.75rem;
+        font-weight:700;
+        letter-spacing:.04em;
+        background:rgba(255,187,51,.12);
+        color:var(--amber);
+        border:1px solid rgba(255,187,51,.2);
+      }
+
+      /* Bid slider */
+      .bid-row{
+        display:flex;
+        align-items:center;
+        gap:16px;
+        padding:14px 0;
+        border-bottom:1px solid rgba(255,255,255,.05);
+      }
+      .bid-row input[type="range"]{
+        flex:1;
+        -webkit-appearance:none;
+        appearance:none;
+        height:4px;
+        background:rgba(255,255,255,.08);
+        border-radius:9999px;
+        outline:none;
+      }
+      .bid-row input[type="range"]::-webkit-slider-thumb{
+        -webkit-appearance:none;
+        appearance:none;
+        width:18px;
+        height:18px;
+        border-radius:50%;
+        background:var(--orange);
+        cursor:pointer;
+        box-shadow:0 2px 8px rgba(255,107,53,.3);
+      }
+
+      /* This or That */
+      .tot-option{
+        flex:1;
+        padding:28px 24px;
+        border-radius:16px;
+        border:1px solid rgba(255,255,255,.08);
+        background:rgba(255,255,255,.03);
+        cursor:pointer;
+        transition:all var(--transition-fast);
+        text-align:center;
+        user-select:none;
+      }
+      .tot-option:hover{
+        background:rgba(255,255,255,.06);
+        border-color:rgba(255,255,255,.15);
+        transform:scale(1.02);
+      }
+      .tot-option.chosen{
+        background:rgba(255,107,53,.08);
+        border-color:var(--orange);
+        box-shadow:0 0 0 1px var(--orange);
+        transform:scale(1.02);
+      }
+
+      /* Slider (brand personality) */
+      .brand-slider{
+        display:flex;
+        align-items:center;
+        gap:16px;
+        padding:16px 0;
+      }
+      .brand-slider input[type="range"]{
+        flex:1;
+        -webkit-appearance:none;
+        appearance:none;
+        height:6px;
+        background:linear-gradient(90deg,var(--violet),var(--orange));
+        border-radius:9999px;
+        outline:none;
+      }
+      .brand-slider input[type="range"]::-webkit-slider-thumb{
+        -webkit-appearance:none;
+        appearance:none;
+        width:22px;
+        height:22px;
+        border-radius:50%;
+        background:var(--cream);
+        cursor:pointer;
+        box-shadow:0 2px 10px rgba(0,0,0,.4);
+      }
+
+      /* Step transition */
+      .step{
+        opacity:0;
+        transform:translateY(30px);
+        transition:opacity .5s cubic-bezier(.4,0,.2,1),transform .5s cubic-bezier(.4,0,.2,1);
+        pointer-events:none;
+        position:absolute;
+        inset:0;
+      }
+      .step.active{
+        opacity:1;
+        transform:translateY(0);
+        pointer-events:auto;
+        position:relative;
+      }
+      .step.exit-up{
+        opacity:0;
+        transform:translateY(-30px);
+      }
+
+      /* Pill label */
+      .pill-label{
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        padding:4px 14px;
+        border-radius:9999px;
+        font-size:.65rem;
+        font-weight:700;
+        letter-spacing:.08em;
+        text-transform:uppercase;
+        border:1px solid currentColor;
+        white-space:nowrap;
+      }
+
+      /* Continue button */
+      .btn-continue{
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+        background:var(--orange);
+        color:var(--bg);
+        font-weight:700;
+        font-size:.9rem;
+        padding:14px 32px;
+        border-radius:14px;
+        border:none;
+        cursor:pointer;
+        transition:background var(--transition-fast),transform var(--transition-fast);
+      }
+      .btn-continue:hover{
+        background:var(--orange-dk);
+        transform:translateY(-1px);
+      }
+      .btn-continue:disabled{
+        opacity:.3;
+        cursor:not-allowed;
+        transform:none;
+      }
+
+      .btn-back{
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        background:transparent;
+        color:rgba(255,255,255,.4);
+        font-weight:500;
+        font-size:.85rem;
+        padding:14px 20px;
+        border-radius:14px;
+        border:1px solid rgba(255,255,255,.08);
+        cursor:pointer;
+        transition:all var(--transition-fast);
+      }
+      .btn-back:hover{
+        color:rgba(255,255,255,.7);
+        border-color:rgba(255,255,255,.15);
+      }
+
+      /* Reveal card (spec) */
+      .spec-card{
+        background:linear-gradient(145deg,rgba(255,107,53,.06),rgba(123,104,238,.06));
+        border:1px solid rgba(255,107,53,.2);
+        border-radius:20px;
+        padding:40px;
+      }
+
+      /* Phase badge */
+      .phase-badge{
+        display:inline-flex;
+        align-items:center;
+        gap:4px;
+        font-size:.6rem;
+        font-weight:700;
+        letter-spacing:.1em;
+        text-transform:uppercase;
+        color:var(--amber);
+        opacity:.7;
+      }
+
+      /* ═══ Density wireframes ═══ */
+      .wire{border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.02);overflow:hidden;color:rgba(255,255,255,.35)}
+      .wire-row{display:flex}
+      .wire-col{display:flex;flex-direction:column}
+      .wire-border-r{border-right:1px solid rgba(255,255,255,.12)}
+      .wire-border-b{border-bottom:1px solid rgba(255,255,255,.12)}
+      .wire-sidebar{width:100px;flex-shrink:0}
+      .wire-main{flex:1;min-width:0}
+      .wire-nav-item{padding:4px 8px;border-radius:5px;font-size:.5rem;display:flex;align-items:center;gap:4px}
+      .wire-nav-active{background:rgba(255,107,53,.2);color:rgba(255,107,53,.6)}
+      .wire-kpi{flex:1;border:1px solid rgba(255,255,255,.12);border-radius:6px;text-align:center}
+      .wire-kpi-val{font-weight:700;color:rgba(255,255,255,.45)}
+      .wire-kpi-label{color:rgba(255,255,255,.18)}
+      .wire-table{width:100%;border-collapse:collapse}
+      .wire-table th{text-align:left;border-bottom:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.18);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+      .wire-table td{border-bottom:1px solid rgba(255,255,255,.04)}
+      .wire-dot{width:5px;height:5px;border-radius:50%;display:inline-block}
+      .wire-dot-g{background:rgba(74,222,128,.5)}
+      .wire-dot-y{background:rgba(255,187,51,.5)}
+      .wire-dot-r{background:rgba(255,107,94,.5)}
+      .wire-badge{display:inline-flex;padding:1px 5px;border-radius:9999px;font-weight:700;letter-spacing:.03em}
+      .wire-badge-g{background:rgba(74,222,128,.1);color:rgba(74,222,128,.5);border:1px solid rgba(74,222,128,.15)}
+      .wire-badge-y{background:rgba(255,187,51,.1);color:rgba(255,187,51,.5);border:1px solid rgba(255,187,51,.15)}
+      .wire-badge-r{background:rgba(255,107,94,.1);color:rgba(255,107,94,.5);border:1px solid rgba(255,107,94,.15)}
+      .wire-avatar{border-radius:4px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center}
+
+      /* ── Compact layout: tighter type scale + vertical rhythm ── */
+      .step h1,.step h2{font-size:clamp(1.5rem,4vw,2.5rem) !important;line-height:1.1 !important}
+      .step > p{font-size:15px !important;margin-bottom:0.3rem !important;max-width:34rem;margin-inline:auto !important;text-align:center !important;text-wrap:balance}
+      .step > p:last-of-type{margin-bottom:2.25rem !important}
+      #step-intro p,#step-intake p{max-width:40rem;margin-inline:auto !important;text-align:center !important;text-wrap:balance}
+      .step > .flex.gap-3:last-child,.step > .flex.gap-4:last-child{margin-top:2.25rem !important}
+      .game-card .text-base{font-size:.875rem !important}
+      .game-card .text-lg,.game-card .text-xl{font-size:.9375rem !important}
+      .game-card{border:1px solid rgba(255,255,255,.1) !important}
+    }
+
+    @layer utilities {
+      @media(prefers-reduced-motion:reduce){
+        .step{transition:none}
+        .game-card,.scenario-card,.tot-option{transition:none}
+        .phase-fill{transition:none}
+      }
+    }
+    /* ═══ Subtitle centering — UNLAYERED to beat Tailwind Play CDN ═══ */
+    .step > p, #step-intro p, #step-intake p { margin-inline: auto !important; text-align: center !important; text-wrap: balance; }
+
+    /* ═══ Heroicons inline ═══ */
+    .hi{width:1em;height:1em;display:inline-block;vertical-align:-0.125em;fill:none;stroke:currentColor;stroke-width:1.5}
+    .hi-pulse{animation:hi-pulse 2s ease-in-out infinite}
+    @keyframes hi-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.15)}}
+    .hi-bounce{animation:hi-bounce 1.5s ease-in-out infinite}
+    @keyframes hi-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-15%)}}
+  </style>
+</head>
+
+<body>
+  <!-- Heroicons Outline Sprite -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="hi-check" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></symbol>
+    <symbol id="hi-bolt" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z"/></symbol>
+    <symbol id="hi-squares" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z"/></symbol>
+    <symbol id="hi-magnifying-glass" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></symbol>
+    <symbol id="hi-user" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></symbol>
+    <symbol id="hi-swatch" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z"/></symbol>
+    <symbol id="hi-star" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></symbol>
+    <symbol id="hi-viewfinder" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></symbol>
+    <symbol id="hi-document-text" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></symbol>
+    <symbol id="hi-document" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></symbol>
+    <symbol id="hi-sparkles" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z"/></symbol>
+    <symbol id="hi-arrow-left" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"/></symbol>
+    <symbol id="hi-arrow-right" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></symbol>
+    <symbol id="hi-paper-clip" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.503 1.503 0 0 0 2.124 2.124l7.81-7.81"/></symbol>
+    <symbol id="hi-chart-bar" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z"/></symbol>
+    <symbol id="hi-chat-bubble-left-right" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 0 1-.825-.242m9.345-8.334a2.126 2.126 0 0 0-.476-.095 48.64 48.64 0 0 0-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0 0 11.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"/></symbol>
+    <symbol id="hi-face-frown" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.182 16.318A4.486 4.486 0 0 0 12.016 15a4.486 4.486 0 0 0-3.198 1.318M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75Zm-.375 0h.008v.015h-.008V9.75Z"/></symbol>
+    <symbol id="hi-envelope" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"/></symbol>
+    <symbol id="hi-question-mark-circle" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"/></symbol>
+    <symbol id="hi-no-symbol" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"/></symbol>
+    <symbol id="hi-pencil" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125"/></symbol>
+    <symbol id="hi-building-storefront" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.615A2.993 2.993 0 0 0 9.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 0 0 2.25 1.016c.896 0 1.7-.393 2.25-1.015a3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72M6.75 18h3.75a.75.75 0 0 0 .75-.75V13.5a.75.75 0 0 0-.75-.75H6.75a.75.75 0 0 0-.75.75v3.75c0 .414.336.75.75.75Z"/></symbol>
+    <symbol id="hi-rocket-launch" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 0 1-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 0 0 6.16-12.12A14.98 14.98 0 0 0 9.631 8.41m5.96 5.96a14.926 14.926 0 0 1-5.841 2.58m-.119-8.54a6 6 0 0 0-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 0 0-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 0 1-2.448-2.448 14.9 14.9 0 0 1 .06-.312m-2.24 2.39a4.493 4.493 0 0 0-1.757 4.306 4.493 4.493 0 0 0 4.306-1.758M16.5 9a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"/></symbol>
+    <symbol id="hi-fire" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z"/></symbol>
+    <symbol id="hi-film" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-2.625 0V5.625m0 0A1.125 1.125 0 0 1 4.5 4.5h15a1.125 1.125 0 0 1 1.125 1.125m-17.25 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 8.25 6 7.746 6 7.125v-1.5M4.875 8.25C5.496 8.25 6 8.754 6 9.375v1.5m0-5.25v5.25m0-5.25C6 4.504 6.504 4 7.125 4h9.75c.621 0 1.125.504 1.125 1.125m1.125 2.625h1.5m-1.5 0A1.125 1.125 0 0 1 18 7.125v-1.5m1.125 2.625c-.621 0-1.125.504-1.125 1.125v1.5m2.625-2.625c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125M18 5.625v5.25M7.125 12h9.75m-9.75 0A1.125 1.125 0 0 1 6 10.875M7.125 12C6.504 12 6 12.504 6 13.125m0-2.25v2.25m0 0c0 .621.504 1.125 1.125 1.125M18 10.875c0 .621-.504 1.125-1.125 1.125M18 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m-12 5.25v-5.25m0 5.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125m-12 0v-1.5c0-.621-.504-1.125-1.125-1.125M18 18.375v-5.25m0 5.25c0 .621.504 1.125 1.125 1.125M18 13.125v-1.5c0-.621.504-1.125 1.125-1.125M18 13.125c0 .621.504 1.125 1.125 1.125M6 13.125v1.5c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125M19.125 12h1.5m0 0c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m1.125-2.625v2.625m0 0v1.5c0 .621-.504 1.125-1.125 1.125M19.125 18.375h1.5"/></symbol>
+    <symbol id="hi-sun" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"/></symbol>
+    <symbol id="hi-musical-note" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m9 9 10.5-3m0 6.553v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 1 1-.99-3.467l2.31-.66a2.25 2.25 0 0 0 1.632-2.163Zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 0 1-1.632 2.163l-1.32.377a1.803 1.803 0 0 1-.99-3.467l2.31-.66A2.25 2.25 0 0 0 9 15.553Z"/></symbol>
+    <symbol id="hi-phone" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z"/></symbol>
+    <symbol id="hi-bell-alert" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0M3.124 7.5A8.969 8.969 0 0 1 5.292 3m13.416 0a8.969 8.969 0 0 1 2.168 4.5"/></symbol>
+    <symbol id="hi-trophy" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 0 1 3 3h-15a3 3 0 0 1 3-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 0 1-.982-3.172M9.497 14.25a7.454 7.454 0 0 0 .982-3.172M2.25 4.5a2.25 2.25 0 0 1 3.168-2.057c.307.142.484.466.484.805v6.002c0 .339-.177.663-.484.805A2.25 2.25 0 0 1 2.25 7.75v-3.25Zm19.5 0a2.25 2.25 0 0 0-3.168-2.057c-.307.142-.484.466-.484.805v6.002c0 .339.177.663.484.805A2.25 2.25 0 0 0 21.75 7.75v-3.25Z"/></symbol>
+    <symbol id="hi-hand-raised" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.05 4.575a1.575 1.575 0 1 0-3.15 0v3m3.15-3v-1.5a1.575 1.575 0 0 1 3.15 0v1.5m-3.15 0 .075 5.925m3.075-5.925v3m0-3a1.575 1.575 0 1 1 3.15 0m-3.15 0v1.5m3.15-1.5v3m0-3a1.575 1.575 0 1 1 3.15 0m-3.15 3.75v2.568a2.002 2.002 0 0 0 .568 1.392c.198.198.46.348.743.442a3 3 0 0 1 1.714 1.98 10.986 10.986 0 0 1-5.775 1.243 10.5 10.5 0 0 1-6.59-2.852A12.578 12.578 0 0 1 3.008 10.5c-.083-.614.267-1.226.862-1.373a1.575 1.575 0 0 1 1.93 1.116c.135.507.305.999.509 1.473"/></symbol>
+    <symbol id="hi-eye-slash" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88"/></symbol>
+    <symbol id="hi-lock-closed" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z"/></symbol>
+    <symbol id="hi-paper-airplane" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></symbol>
+    <symbol id="hi-puzzle-piece" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 6.087c0-.355.186-.676.401-.959.221-.29.349-.634.349-1.003 0-1.036-1.007-1.875-2.25-1.875s-2.25.84-2.25 1.875c0 .369.128.713.349 1.003.215.283.401.604.401.959v0a.64.64 0 0 1-.657.643 48.491 48.491 0 0 0-4.163.3c-1.108.128-1.88 1.115-1.88 2.237v.024c0 .356.186.677.401.96.221.29.349.634.349 1.003 0 1.035-1.007 1.875-2.25 1.875s-2.25-.84-2.25-1.875c0-.369.128-.713.349-1.003.215-.283.401-.604.401-.96v-.024c0-1.122-.772-2.11-1.88-2.238a48.386 48.386 0 0 0-4.163-.3v0A.64.64 0 0 1 3 8.312V6.087Z"/></symbol>
+    <symbol id="hi-home" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/></symbol>
+    <symbol id="hi-light-bulb" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/></symbol>
+  </svg>
+  <div class="mesh-bg" aria-hidden="true"></div>
+
+  <div class="relative z-10 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="flex items-center justify-between px-6 py-5 max-w-4xl mx-auto w-full">
+      <div class="flex items-center gap-3">
+        <svg width="80" height="26" viewBox="0 0 446 146" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Souped"><path d="M0.648 120.459C10.963 120.063 16.109 119.86 26.424 119.464C28.26 119.393 29.423 118.338 29.411 116.613C29.411 115.631 29.003 115.044 28.344 114.469C20.559 107.281 16.625 104.094 8.78 97.745C3.311 93.252.024 88.724 0 82.075C-.048 68.31 11.947 56.426 28.056 54.09C38.179 52.628 43.241 51.897 53.365 50.436C53.137 62.056 53.149 66.968 53.209 76.337C44.033 77.331 39.451 77.822 30.275 78.816C28.572 78.996 27.396 80.254 27.42 81.847C27.42 82.83 27.828 83.632 28.763 84.387C36.512 91.024 40.41 94.175 48.183 100.979C53.904 105.987 56.135 111.33 56.267 117.907C56.531 131.6 45.652 144.61 28.38 144.407C17.236 144.431 11.671 144.443.528 144.467C.744 133.589.732 129.048.648 120.447V120.459Z" fill="white"/><path d="M56.111 97.05C55.728 73.485 74.835 45.68 103.766 41.091C135.96 35.988 151.457 68.118 151.709 90.018C151.973 113.139 136.164 146.048 103.79 146C74.979 145.952 56.483 119.261 56.111 97.05ZM104.03 116.877C117.117 116.373 125.321 106.694 125.129 91.97C124.937 77.247 116.637 68.777 103.539 70.203C90.692 71.604 82.488 81.308 82.704 95.085C82.92 108.862 91.22 117.356 104.042 116.865L104.03 116.877Z" fill="white"/><path d="M155.728 107.029C155.488 83.237 155.284 59.481 155.584 35.676C166.079 34.167 171.321 33.4 181.816 31.891C181.48 56.677 181.744 81.428 181.912 106.202C181.96 113.486 184.299 116.984 189.013 116.829C193.727 116.673 196.09 112.947 196.054 105.52C195.898 80.29 195.634 55.084 195.982 29.842C206.477 28.333 211.719 27.566 222.214 26.056C221.855 51.969 222.082 77.87 222.226 103.771C222.502 121.273 212.631 145.629 188.701 145.988C166.535 146.335 155.128 123.609 155.74 107.017L155.728 107.029Z" fill="white"/><path d="M230.995 24.787C243.637 22.966 249.958 22.043 262.601 20.222C291.4 15.574 298.633 46.986 298.741 64.297C298.861 83.489 290.728 110.551 262.553 111.354C260.406 111.438 259.338 111.474 257.191 111.558C257.191 123.562 257.143 129.803 256.867 143.951C246.408 143.975 241.178 143.987 230.719 143.999C231.283 104.25 230.443 64.524 231.007 24.775L230.995 24.787ZM259.542 83.225C268.706 82.566 272.185 75.438 272.149 66.549C272.101 57.827 268.442 51.37 259.398 52.365C258.403 52.472 257.899 52.532 256.903 52.64C256.903 65.483 256.963 71.353 257.047 83.405C258.043 83.333 258.535 83.297 259.53 83.225H259.542Z" fill="white"/><path d="M302.831 14.412L359.746 6.194C359.494 18.569 359.362 30.944 359.35 43.308C347.08 44.625 340.95 45.296 328.68 46.614C328.68 52.868 328.68 55.899 328.692 61.913C339.379 60.942 344.729 60.451 355.416 59.481C355.452 72.024 355.5 78.014 355.536 90.557C344.849 91.156 339.511 91.455 328.836 92.054C328.86 98.212 328.86 101.315 328.848 107.724C341.094 107.245 347.223 107.017 359.47 106.538C359.458 118.925 359.326 131.324 359.062 143.724C340.147 143.76 321.231 143.796 302.315 143.844C302.975 100.692 302.159 57.552 302.819 14.4L302.831 14.412Z" fill="white"/><path d="M367.902 5.008C381.276 3.079 387.969 2.109 401.344.18C438.431-3.39 445.952 46.614 446 68.166C446.048 91.779 437.855 141.34 400.552 143.652C387.214 143.676 380.545 143.688 367.207 143.724C367.926 97.481 367.183 51.25 367.902 5.008ZM398.897 105.029C417.069 103.531 419.444 82.075 419.42 70.718C419.408 60.176 417.021 37.965 398.825 39.055L393.715 39.606C393.703 61.481 393.811 83.357 393.787 105.232L398.897 105.029Z" fill="white"/></svg>
+        <span class="text-white/20">·</span>
+        <span class="text-white/40 text-sm font-medium" id="header-skill-name">Brand Studio</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="text-white/30 text-sm font-mono" id="header-step">0 / 20</span>
+      </div>
+    </header>
+
+    <!-- Progress -->
+    <div class="px-6 max-w-4xl mx-auto w-full">
+      <div class="phase-bar">
+        <div class="phase-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between mt-2 text-[.6rem] font-bold tracking-wider uppercase text-white/20">
+        <span id="phase-label-0" class="text-orange/60">Context</span>
+        <span id="phase-label-1">Positioning</span>
+        <span id="phase-label-2">Emotion</span>
+        <span id="phase-label-3">Personality</span>
+        <span id="phase-label-4">Behavior</span>
+        <span id="phase-label-5">Visual</span>
+        <span id="phase-label-6">Reveal</span>
+      </div>
+    </div>
+
+    <!-- Game container -->
+    <div class="flex-1 flex flex-col px-6 py-10 max-w-4xl mx-auto w-full" id="game-container">
+
+      <!-- ═══ INTRO ═══ -->
+      <div class="step active" id="step-intro">
+        <div class="flex flex-col items-center text-center mt-12">
+          <span class="pill-label text-orange/70 border-orange/30 mb-6">20 Questions to a Real Brand</span>
+          <h1 class="font-display font-bold text-[clamp(2.2rem,5vw,3.5rem)] leading-[.95] tracking-tight mb-6">
+            Build your brand<br>like a <span class="text-orange">game</span>.
+          </h1>
+          <p class="text-white/45 text-lg max-w-lg leading-relaxed mb-10">
+            No forms. No color pickers. Just 20 strategic questions disguised as games — Mad Libs, card picks, auctions, roasts. By the end, your brand isn't chosen. It's inevitable.
+          </p>
+          <button class="btn-continue" onclick="showStep('intake')">
+            Let's play <svg class="hi"><use href="#hi-arrow-right"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ═══ INTAKE: Prior Work ═══ -->
+      <div class="step" id="step-intake">
+        <div class="flex flex-col items-center text-center mt-6 mb-8">
+          <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">Before we start —</h2>
+          <p class="text-white/45 text-base max-w-lg leading-relaxed">
+            Have you already put thinking into this? A pitch deck, a doc, some notes, a competitor list — anything. <span class="text-white/60">Your effort matters. Drop it here and we'll fold it in.</span>
+          </p>
+        </div>
+
+        <!-- Upload zone -->
+        <div class="game-card mb-6" style="position:relative">
+          <div
+            id="drop-zone"
+            class="border-2 border-dashed border-white/10 rounded-xl p-8 text-center transition-colors cursor-pointer hover:border-orange/30"
+            onclick="document.getElementById('file-input').click()"
+            role="button"
+            tabindex="0"
+            aria-label="Upload a file or drop it here"
+          >
+            <input type="file" id="file-input" class="hidden" accept=".pdf,.md,.txt,.docx,.pptx,.png,.jpg,.jpeg,.webp" aria-hidden="true">
+            <div class="text-3xl mb-3 opacity-40"><svg class="hi" style="width:1em;height:1em"><use href="#hi-paper-clip"/></svg></div>
+            <p class="text-white/50 text-sm mb-1">Drop a file here or click to upload</p>
+            <p class="text-white/20 text-xs">PDF, markdown, text, images, slides — anything goes</p>
+          </div>
+          <div id="file-preview" class="hidden mt-4 flex items-center gap-3 p-3 rounded-lg" style="background:rgba(255,107,53,.06);border:1px solid rgba(255,107,53,.15)">
+            <span class="text-orange text-lg"><svg class="hi" style="width:1em;height:1em"><use href="#hi-document"/></svg></span>
+            <span class="text-sm text-white/70 flex-1" id="file-name">document.pdf</span>
+            <button class="text-white/30 hover:text-white/60 text-sm" onclick="clearFile()" aria-label="Remove file">✕</button>
+          </div>
+        </div>
+
+        <!-- Or paste -->
+        <div class="mb-6">
+          <p class="text-white/30 text-xs font-bold uppercase tracking-wider mb-3 text-center">— or paste your notes —</p>
+          <textarea
+            id="intake-paste"
+            rows="5"
+            class="w-full bg-transparent border border-white/10 rounded-xl p-4 text-white/70 text-sm resize-none focus:border-orange/30 focus:outline-none transition-colors"
+            placeholder="Paste anything: a pitch, some bullet points, a brain dump, competitor URLs, 'I like how Linear feels but warmer'... whatever you've got."
+            aria-label="Paste your existing notes or thinking"
+          ></textarea>
+        </div>
+
+        <!-- Quick references -->
+        <div class="mb-8">
+          <p class="text-white/30 text-xs font-bold uppercase tracking-wider mb-3">Or just drop some quick references:</p>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <div class="scenario-card text-center py-3 px-2" onclick="toggleRef(this, 'has-deck')" style="padding:12px">
+              <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-chart-bar"/></svg></div>
+              <div class="text-xs font-medium text-white/50">I have a pitch deck</div>
+            </div>
+            <div class="scenario-card text-center py-3 px-2" onclick="toggleRef(this, 'has-competitors')" style="padding:12px">
+              <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-magnifying-glass"/></svg></div>
+              <div class="text-xs font-medium text-white/50">I know my competitors</div>
+            </div>
+            <div class="scenario-card text-center py-3 px-2" onclick="toggleRef(this, 'has-brand')" style="padding:12px">
+              <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-swatch"/></svg></div>
+              <div class="text-xs font-medium text-white/50">I have brand ideas</div>
+            </div>
+            <div class="scenario-card text-center py-3 px-2" onclick="toggleRef(this, 'has-nothing')" style="padding:12px">
+              <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-light-bulb"/></svg></div>
+              <div class="text-xs font-medium text-white/50">Just an idea in my head</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 justify-center">
+          <button class="btn-back" onclick="showStep(0)"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" onclick="processIntake()">
+            Continue <svg class="hi"><use href="#hi-arrow-right"/></svg>
+          </button>
+        </div>
+        <p class="text-center text-white/20 text-xs mt-3">You can skip this — but your prior work makes the game faster and sharper.</p>
+      </div>
+
+      <!-- ═══ INTAKE SUMMARY (shown if prior work detected) ═══ -->
+      <div class="step" id="step-intake-summary">
+        <div class="phase-badge mb-3">Prior Work · Detected</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">Here's what I got.</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">I'll skip what you've already nailed and dig deeper on the gaps.</p>
+
+        <div class="spec-card mb-6" id="intake-findings">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="flex gap-3">
+          <button class="btn-back" onclick="showStep('intake')"><svg class="hi"><use href="#hi-arrow-left"/></svg> Add more</button>
+          <button class="btn-continue" onclick="startGame()">Looks good — let's play <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q1: Mad Lib — Elevator Pitch ═══ -->
+      <div class="step" id="step-1">
+        <div class="phase-badge mb-3">Phase 1 · Context</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Elevator Pitch</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Fill in the blanks. No overthinking — first instinct wins.</p>
+
+        <div class="game-card" style="position:relative">
+          <div class="text-lg leading-[2.4] text-white/70">
+            My product helps
+            <span contenteditable="true" class="madlib-blank" id="q1-who" data-placeholder="who?" role="textbox" aria-label="Who does your product help"></span>
+            <br>stop struggling with
+            <span contenteditable="true" class="madlib-blank" id="q1-problem" data-placeholder="what problem?" role="textbox" aria-label="What problem do they have"></span>
+            <br>by giving them
+            <span contenteditable="true" class="madlib-blank" id="q1-solution" data-placeholder="what solution?" role="textbox" aria-label="What solution do you provide"></span>
+            <br>so they can
+            <span contenteditable="true" class="madlib-blank" id="q1-outcome" data-placeholder="what outcome?" role="textbox" aria-label="What outcome do they get"></span>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q1-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q2: Scenario Card — User Snapshot ═══ -->
+      <div class="step" id="step-2">
+        <div class="phase-badge mb-3">Phase 1 · Context</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The User Snapshot</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Picture your #1 user right now. Not a demographic — a moment.</p>
+
+        <div class="game-card" style="position:relative">
+          <label class="block text-white/50 text-sm mb-2">Where are they? What just happened? How tech-savvy are they?</label>
+          <textarea
+            id="q2-snapshot"
+            rows="4"
+            class="w-full bg-transparent border border-white/10 rounded-xl p-4 text-white/80 text-base resize-none focus:border-orange/50 focus:outline-none transition-colors"
+            placeholder="e.g. 'It's Tuesday 2pm. A freelance designer just got a panicked email from a client asking for the invoice from last month. She opens her laptop, dreading the spreadsheet...'"
+            aria-label="Describe your user's moment"
+          ></textarea>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q2-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q3: Hot Take — The Hack ═══ -->
+      <div class="step" id="step-3">
+        <div class="phase-badge mb-3">Phase 1 · Context</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Hack They're Using</h2>
+        <p class="text-white/40 text-sm mb-2 text-center">Hot take: your users aren't waiting for you.</p>
+        <p class="text-orange/60 text-sm font-medium mb-8 text-center">They've already solved this problem — badly. What's the duct-tape solution?</p>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div class="scenario-card text-center" onclick="toggleHack(this, 'spreadsheet')">
+            <div class="text-2xl mb-2"><svg class="hi" style="width:1em;height:1em"><use href="#hi-chart-bar"/></svg></div>
+            <div class="text-sm font-medium">Spreadsheet</div>
+          </div>
+          <div class="scenario-card text-center" onclick="toggleHack(this, 'whatsapp')">
+            <div class="text-2xl mb-2"><svg class="hi" style="width:1em;height:1em"><use href="#hi-chat-bubble-left-right"/></svg></div>
+            <div class="text-sm font-medium">WhatsApp/Slack</div>
+          </div>
+          <div class="scenario-card text-center" onclick="toggleHack(this, 'sticky')">
+            <div class="text-2xl mb-2"><svg class="hi" style="width:1em;height:1em"><use href="#hi-document-text"/></svg></div>
+            <div class="text-sm font-medium">Sticky notes</div>
+          </div>
+          <div class="scenario-card text-center" onclick="toggleHack(this, 'competitor')">
+            <div class="text-2xl mb-2"><svg class="hi" style="width:1em;height:1em"><use href="#hi-face-frown"/></svg></div>
+            <div class="text-sm font-medium">A competitor they hate</div>
+          </div>
+          <div class="scenario-card text-center" onclick="toggleHack(this, 'email')">
+            <div class="text-2xl mb-2"><svg class="hi" style="width:1em;height:1em"><use href="#hi-envelope"/></svg></div>
+            <div class="text-sm font-medium">Email chains</div>
+          </div>
+          <div class="scenario-card text-center" onclick="toggleHack(this, 'manual')">
+            <div class="text-2xl mb-2"><svg class="hi" style="width:1em;height:1em"><use href="#hi-question-mark-circle"/></svg></div>
+            <div class="text-sm font-medium">Pure manual work</div>
+          </div>
+          <div class="scenario-card text-center" onclick="toggleHack(this, 'nothing')">
+            <div class="text-2xl mb-2"><svg class="hi" style="width:1em;height:1em"><use href="#hi-no-symbol"/></svg></div>
+            <div class="text-sm font-medium">Nothing — they suffer</div>
+          </div>
+          <div class="scenario-card text-center" onclick="toggleHack(this, 'other')">
+            <div class="text-2xl mb-2"><svg class="hi" style="width:1em;height:1em"><use href="#hi-pencil"/></svg></div>
+            <div class="text-sm font-medium">Other</div>
+          </div>
+        </div>
+
+        <div id="q3-other-wrap" class="hidden mb-4">
+          <input type="text" class="madlib-input w-full" id="q3-other" placeholder="What's the hack?" aria-label="Describe the hack">
+        </div>
+
+        <div class="flex gap-3 mt-4">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q3-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q4: Mad Lib — The Real Job ═══ -->
+      <div class="step" id="step-4">
+        <div class="phase-badge mb-3">Phase 1 · Context</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Real Job</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">The emotional job determines the brand's tone. Make both count.</p>
+
+        <div class="game-card">
+          <div class="text-lg leading-[2.4] text-white/70">
+            When my user
+            <span contenteditable="true" class="madlib-blank" id="q4-situation" data-placeholder="situation..." role="textbox" aria-label="What situation triggers use"></span>
+            <br>they want to
+            <span contenteditable="true" class="madlib-blank" id="q4-functional" data-placeholder="do what?" role="textbox" aria-label="What do they want to do"></span>
+            <br>so they can feel
+            <span contenteditable="true" class="madlib-blank" id="q4-emotional" data-placeholder="feel what?" role="textbox" aria-label="How do they want to feel"></span>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q4-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q5: Scenario Card — The Shelf Test ═══ -->
+      <div class="step" id="step-5">
+        <div class="phase-badge mb-3">Phase 2 · Positioning</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Shelf Test</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Your user walks into a store. Which aisle are you on?</p>
+
+        <div class="grid gap-4 md:grid-cols-2 mb-6">
+          <div class="scenario-card" onclick="pickShelf(this, 'existing')">
+            <div class="text-xl mb-3"><svg class="hi" style="width:1em;height:1em"><use href="#hi-building-storefront"/></svg></div>
+            <div class="font-bold text-white/80 mb-1">I'm on an existing shelf</div>
+            <div class="text-sm text-white/40">There's a category for what I do. I have neighbors.</div>
+            <input type="text" class="madlib-input mt-3 w-full text-sm" id="q5-category" placeholder="Which aisle? (e.g. 'project management')" aria-label="Category name" onclick="event.stopPropagation()">
+          </div>
+          <div class="scenario-card" onclick="pickShelf(this, 'new')">
+            <div class="text-xl mb-3"><svg class="hi" style="width:1em;height:1em"><use href="#hi-rocket-launch"/></svg></div>
+            <div class="font-bold text-white/80 mb-1">There's no aisle for me</div>
+            <div class="text-sm text-white/40">I'm building a new category. The problem doesn't have a name yet.</div>
+            <input type="text" class="madlib-input mt-3 w-full text-sm" id="q5-new-category" placeholder="What sign goes above your new aisle?" aria-label="New category name" onclick="event.stopPropagation()">
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-4">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q5-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q6: Roast Round — The Lineup ═══ -->
+      <div class="step" id="step-6">
+        <div class="phase-badge mb-3">Phase 2 · Positioning</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Lineup</h2>
+        <p class="text-white/40 text-sm mb-2 text-center">Name 2–3 products your users would compare you to.</p>
+        <p class="text-orange/60 text-sm font-medium mb-8 text-center">We'll roast them later. <svg class="hi" style="width:1em;height:1em;display:inline"><use href="#hi-fire"/></svg></p>
+
+        <div class="space-y-3">
+          <div class="flex items-center gap-3">
+            <span class="text-white/20 font-mono text-sm w-4">1.</span>
+            <input type="text" class="madlib-input flex-1" id="q6-comp1" placeholder="Competitor or reference..." aria-label="Competitor 1">
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-white/20 font-mono text-sm w-4">2.</span>
+            <input type="text" class="madlib-input flex-1" id="q6-comp2" placeholder="Another one..." aria-label="Competitor 2">
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-white/20 font-mono text-sm w-4">3.</span>
+            <input type="text" class="madlib-input flex-1" id="q6-comp3" placeholder="Optional third..." aria-label="Competitor 3 (optional)">
+          </div>
+        </div>
+
+        <div class="game-card mt-6" style="position:relative">
+          <p class="text-white/40 text-sm mb-3">Now — when someone roasts YOUR brand someday, what do you want the read to be?</p>
+          <textarea
+            id="q6-desired-roast"
+            rows="2"
+            class="w-full bg-transparent border border-white/10 rounded-xl p-4 text-orange text-base resize-none focus:border-orange/50 focus:outline-none transition-colors"
+            placeholder="e.g. 'They make it look too easy. I keep waiting for the catch.'"
+            aria-label="Your desired roast"
+          ></textarea>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q6-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q7+Q8: Mad Lib — Onliness Statement ═══ -->
+      <div class="step" id="step-7">
+        <div class="phase-badge mb-3">Phase 2 · Positioning</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Onliness Statement</h2>
+        <p class="text-white/40 text-sm mb-2 text-center">This is the most important sentence your brand will ever have.</p>
+        <p class="text-orange/60 text-sm font-medium mb-8 text-center">If you can't fill this in, you don't have a brand yet. Take your time.</p>
+
+        <div class="spec-card">
+          <div class="text-xl leading-[2.2] text-white/70">
+            Our
+            <span contenteditable="true" class="madlib-blank" id="q8-offering" data-placeholder="offering" role="textbox" aria-label="Your offering"></span>
+            is the only
+            <span contenteditable="true" class="madlib-blank" id="q8-category" data-placeholder="category" role="textbox" aria-label="Your category"></span>
+            <br>that
+            <span contenteditable="true" class="madlib-blank" id="q8-differentiator" data-placeholder="key differentiator" role="textbox" aria-label="Your differentiator"></span>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q8-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q9+Q10: Mood Playlist ═══ -->
+      <div class="step" id="step-8">
+        <div class="phase-badge mb-3">Phase 3 · Emotion</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Emotional Arc</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Your user opens your app. What song is playing in their head?</p>
+
+        <p class="text-white/50 text-xs font-bold tracking-wider uppercase mb-3">When they open your app:</p>
+        <div class="grid gap-3 md:grid-cols-3 mb-10">
+          <div class="scenario-card" onclick="pickMood(this, 'open', 'tense')" data-group="open">
+            <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-film"/></svg></div>
+            <div class="font-bold text-sm text-white/80">Thriller soundtrack</div>
+            <div class="text-xs text-white/35">Stressed. Something's wrong.</div>
+          </div>
+          <div class="scenario-card" onclick="pickMood(this, 'open', 'calm')" data-group="open">
+            <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-sun"/></svg></div>
+            <div class="font-bold text-sm text-white/80">Morning lo-fi</div>
+            <div class="text-xs text-white/35">Calm. Focused work ahead.</div>
+          </div>
+          <div class="scenario-card" onclick="pickMood(this, 'open', 'hype')" data-group="open">
+            <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-musical-note"/></svg></div>
+            <div class="font-bold text-sm text-white/80">Montage music</div>
+            <div class="text-xs text-white/35">Excited. Building something.</div>
+          </div>
+          <div class="scenario-card" onclick="pickMood(this, 'open', 'bored')" data-group="open">
+            <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-phone"/></svg></div>
+            <div class="font-bold text-sm text-white/80">Hold music</div>
+            <div class="text-xs text-white/35">Bored. Just a chore.</div>
+          </div>
+          <div class="scenario-card" onclick="pickMood(this, 'open', 'panic')" data-group="open">
+            <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-bell-alert"/></svg></div>
+            <div class="font-bold text-sm text-white/80">Emergency radio</div>
+            <div class="text-xs text-white/35">Panicked. Need answers NOW.</div>
+          </div>
+        </div>
+
+        <p class="text-white/50 text-xs font-bold tracking-wider uppercase mb-3">When they close your app:</p>
+        <div class="grid gap-3 md:grid-cols-3 mb-6">
+          <div class="scenario-card" onclick="pickMood(this, 'close', 'victory')" data-group="close">
+            <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-trophy"/></svg></div>
+            <div class="font-bold text-sm text-white/80">Victory fanfare</div>
+            <div class="text-xs text-white/35">They conquered something.</div>
+          </div>
+          <div class="scenario-card" onclick="pickMood(this, 'close', 'done')" data-group="close">
+            <div class="text-lg mb-1"><svg class="hi" style="width:1.25em;height:1.25em"><use href="#hi-check"/></svg></div>
+            <div class="font-bold text-sm text-white/80">Satisfying click</div>
+            <div class="text-xs text-white/35">Clean. Done. Handled.</div>
+          </div>
+          <div class="scenario-card" onclick="pickMood(this, 'close', 'capable')" data-group="close">
+            <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-hand-raised"/></svg></div>
+            <div class="font-bold text-sm text-white/80">Inspirational swell</div>
+            <div class="text-xs text-white/35">They feel capable.</div>
+          </div>
+          <div class="scenario-card" onclick="pickMood(this, 'close', 'peace')" data-group="close">
+            <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-eye-slash"/></svg></div>
+            <div class="font-bold text-sm text-white/80">Peaceful silence</div>
+            <div class="text-xs text-white/35">The anxiety is gone.</div>
+          </div>
+          <div class="scenario-card" onclick="pickMood(this, 'close', 'hype')" data-group="close">
+            <div class="text-lg mb-1"><svg class="hi" style="width:1em;height:1em"><use href="#hi-fire"/></svg></div>
+            <div class="font-bold text-sm text-white/80">Hype track</div>
+            <div class="text-xs text-white/35">Can't wait to come back.</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-4">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q9-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q11: This or That — Session Type ═══ -->
+      <div class="step" id="step-9">
+        <div class="phase-badge mb-3">Phase 3 · Emotion</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Session Type</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Your app is more like:</p>
+
+        <div class="flex gap-4 flex-col md:flex-row">
+          <div class="tot-option" onclick="pickSession(this, 'cockpit')" tabindex="0" role="button" aria-label="Cockpit - daily driver">
+            <div class="text-4xl mb-4"><svg class="hi" style="width:1em;height:1em"><use href="#hi-paper-airplane"/></svg></div>
+            <div class="font-display font-bold text-xl mb-2">A Cockpit</div>
+            <div class="text-sm text-white/40 leading-relaxed">You live in it all day.<br>Everything at your fingertips.<br>Dense, efficient, keyboard-first.</div>
+          </div>
+          <div class="flex items-center justify-center text-white/15 font-bold text-sm">OR</div>
+          <div class="tot-option" onclick="pickSession(this, 'vending')" tabindex="0" role="button" aria-label="Vending machine - occasional visit">
+            <div class="text-4xl mb-4"><svg class="hi" style="width:1em;height:1em"><use href="#hi-puzzle-piece"/></svg></div>
+            <div class="font-display font-bold text-xl mb-2">A Vending Machine</div>
+            <div class="text-sm text-white/40 leading-relaxed">Walk up, get what you need, walk away.<br>Guided, forgiving, orientating.</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q11-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q12: Scenario Card — Dinner Party ═══ -->
+      <div class="step" id="step-10">
+        <div class="phase-badge mb-3">Phase 4 · Personality</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Dinner Party</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Your product walks in. It's a person now. Who are they?</p>
+
+        <div class="grid gap-3 md:grid-cols-2">
+          <div class="scenario-card" onclick="pickArchetype(this, 'analyst')">
+            <div class="flex items-start gap-3">
+              <span class="text-xl"><svg class="hi" style="width:1em;height:1em"><use href="#hi-chart-bar"/></svg></span>
+              <div>
+                <div class="font-bold text-white/80">The Analyst</div>
+                <div class="text-xs text-white/35 mt-1">Arrived with data. Speaks in facts. Everyone trusts their opinion.</div>
+              </div>
+            </div>
+          </div>
+          <div class="scenario-card" onclick="pickArchetype(this, 'coach')">
+            <div class="flex items-start gap-3">
+              <span class="text-xl"><svg class="hi" style="width:1em;height:1em"><use href="#hi-bolt"/></svg></span>
+              <div>
+                <div class="font-bold text-white/80">The Coach</div>
+                <div class="text-xs text-white/35 mt-1">At the whiteboard already. Asks great questions. Makes everyone better.</div>
+              </div>
+            </div>
+          </div>
+          <div class="scenario-card" onclick="pickArchetype(this, 'expert')">
+            <div class="flex items-start gap-3">
+              <span class="text-xl"><svg class="hi" style="width:1em;height:1em"><use href="#hi-light-bulb"/></svg></span>
+              <div>
+                <div class="font-bold text-white/80">The Quiet Expert</div>
+                <div class="text-xs text-white/35 mt-1">Speaks once. Drops something brilliant. Goes back to listening.</div>
+              </div>
+            </div>
+          </div>
+          <div class="scenario-card" onclick="pickArchetype(this, 'creative')">
+            <div class="flex items-start gap-3">
+              <span class="text-xl"><svg class="hi" style="width:1em;height:1em"><use href="#hi-swatch"/></svg></span>
+              <div>
+                <div class="font-bold text-white/80">The Creative</div>
+                <div class="text-xs text-white/35 mt-1">Sketching on a napkin. Sees connections nobody else sees.</div>
+              </div>
+            </div>
+          </div>
+          <div class="scenario-card" onclick="pickArchetype(this, 'host')">
+            <div class="flex items-start gap-3">
+              <span class="text-xl"><svg class="hi" style="width:1em;height:1em"><use href="#hi-home"/></svg></span>
+              <div>
+                <div class="font-bold text-white/80">The Host</div>
+                <div class="text-xs text-white/35 mt-1">Makes sure everyone's comfortable. Remembers your name. Handles everything.</div>
+              </div>
+            </div>
+          </div>
+          <div class="scenario-card" onclick="pickArchetype(this, 'maverick')">
+            <div class="flex items-start gap-3">
+              <span class="text-xl"><svg class="hi hi-pulse" style="width:1.25em;height:1.25em"><use href="#hi-bolt"/></svg></span>
+              <div>
+                <div class="font-bold text-white/80">The Maverick</div>
+                <div class="text-xs text-white/35 mt-1">Says what nobody's willing to say. Polarizing but magnetic.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q12-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q13: Brand Sliders ═══ -->
+      <div class="step" id="step-11">
+        <div class="phase-badge mb-3">Phase 4 · Personality</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Brand Slider</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">No middle ground. Drag toward a side.</p>
+
+        <div class="game-card" style="position:relative">
+          <div class="brand-slider">
+            <span class="text-sm font-medium text-violet-lt w-28 text-right">Approachable</span>
+            <input type="range" min="0" max="100" value="50" id="slider-1" aria-label="Approachable vs Authoritative">
+            <span class="text-sm font-medium text-orange w-28">Authoritative</span>
+          </div>
+          <div class="brand-slider">
+            <span class="text-sm font-medium text-violet-lt w-28 text-right">Minimal</span>
+            <input type="range" min="0" max="100" value="50" id="slider-2" aria-label="Minimal vs Rich">
+            <span class="text-sm font-medium text-orange w-28">Rich</span>
+          </div>
+          <div class="brand-slider">
+            <span class="text-sm font-medium text-violet-lt w-28 text-right">Playful</span>
+            <input type="range" min="0" max="100" value="50" id="slider-3" aria-label="Playful vs Serious">
+            <span class="text-sm font-medium text-orange w-28">Serious</span>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" onclick="nextStep()">Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q14: North Star ═══ -->
+      <div class="step" id="step-12">
+        <div class="phase-badge mb-3">Phase 4 · Personality</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The North Star</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Name one brand — any industry — whose <span class="text-white/70">vibe</span> you'd want to channel. Not their product. Their <em>feeling</em>.</p>
+
+        <div class="game-card" style="position:relative">
+          <input type="text" class="madlib-input text-2xl w-full" id="q14-brand" placeholder="e.g. Apple, Aesop, Linear, Patagonia..." aria-label="North star brand">
+          <p class="text-white/25 text-xs mt-4">We'll reverse-engineer what makes them feel that way — and channel it for you.</p>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q14-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q15: Error Card ═══ -->
+      <div class="step" id="step-13">
+        <div class="phase-badge mb-3">Phase 5 · Behavior</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Error Card</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Your user typed 'abc' in a number field. Pick your app's response:</p>
+
+        <div class="grid gap-4 md:grid-cols-3">
+          <div class="scenario-card" onclick="pickError(this, 'factual')">
+            <div class="font-mono text-sm text-white/60 mb-3 p-3 rounded-lg" style="background:rgba(255,255,255,.03)">"That field needs a number."</div>
+            <div class="text-xs text-white/30 font-bold uppercase tracking-wider">Straight shooter</div>
+            <div class="text-xs text-white/20 mt-1">No nonsense. Says it once.</div>
+          </div>
+          <div class="scenario-card" onclick="pickError(this, 'encouraging')">
+            <div class="font-mono text-sm text-white/60 mb-3 p-3 rounded-lg" style="background:rgba(255,255,255,.03)">"Almost! Pop a number in here."</div>
+            <div class="text-xs text-white/30 font-bold uppercase tracking-wider">Favorite teacher</div>
+            <div class="text-xs text-white/20 mt-1">Warm. Guiding. Supportive.</div>
+          </div>
+          <div class="scenario-card" onclick="pickError(this, 'silent')">
+            <div class="font-mono text-sm text-white/60 mb-3 p-3 rounded-lg" style="background:rgba(255,255,255,.03)">
+              <span style="color:var(--orange);opacity:.6">[field glows red, no text]</span>
+            </div>
+            <div class="text-xs text-white/30 font-bold uppercase tracking-wider">Invisible butler</div>
+            <div class="text-xs text-white/20 mt-1">Fixes it. Says nothing.</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q15-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q16: Milestone Card ═══ -->
+      <div class="step" id="step-14">
+        <div class="phase-badge mb-3">Phase 5 · Behavior</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Milestone Card</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Your user just completed their first big task. Pick the celebration:</p>
+
+        <div class="grid gap-4 md:grid-cols-3">
+          <div class="scenario-card" onclick="pickCelebration(this, 'respect')">
+            <div class="text-center mb-4">
+              <span class="text-3xl"><svg class="hi" style="width:1.5em;height:1.5em"><use href="#hi-check"/></svg></span>
+            </div>
+            <div class="text-sm font-bold text-white/80 text-center mb-1">Done. Next <svg class="hi"><use href="#hi-arrow-right"/></svg></div>
+            <div class="text-xs text-white/30 text-center">Respect their time. They're here to work.</div>
+          </div>
+          <div class="scenario-card" onclick="pickCelebration(this, 'momentum')">
+            <div class="text-center mb-4">
+              <span class="text-3xl"><svg class="hi hi-bounce" style="width:1.5em;height:1.5em"><use href="#hi-sparkles"/></svg></span>
+            </div>
+            <div class="text-sm font-bold text-white/80 text-center mb-1">Nice! Here's what's next <svg class="hi"><use href="#hi-arrow-right"/></svg></div>
+            <div class="text-xs text-white/30 text-center">Celebrate + guide. Build momentum.</div>
+          </div>
+          <div class="scenario-card" onclick="pickCelebration(this, 'showoff')">
+            <div class="text-center mb-4">
+              <span class="text-3xl"><svg class="hi" style="width:1em;height:1em"><use href="#hi-trophy"/></svg></span>
+            </div>
+            <div class="text-sm font-bold text-white/80 text-center mb-1">Look what you built. Share it?</div>
+            <div class="text-xs text-white/30 text-center">Make them look good. They want to show off.</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q16-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q17: Palette Showdown ═══ -->
+      <div class="step" id="step-15">
+        <div class="phase-badge mb-3">Phase 6 · Visual</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Palette Showdown</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">You're walking into one of these rooms. Which one is yours?</p>
+
+        <div class="flex gap-4 flex-col md:flex-row">
+          <div class="tot-option" onclick="pickPalette(this, 'A')" style="padding:0;overflow:hidden">
+            <div class="p-6" style="background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:15px 15px 0 0">
+              <div class="flex gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg" style="background:#1a1a2e;border:1px solid rgba(255,255,255,.1)"></div>
+                <div class="w-8 h-8 rounded-lg" style="background:#e8e0d4"></div>
+                <div class="w-8 h-8 rounded-lg" style="background:#0d9488"></div>
+                <div class="w-8 h-8 rounded-lg" style="background:#334155"></div>
+              </div>
+              <div class="text-sm text-left" style="color:#e8e0d4">
+                <p class="font-bold">The Research Library</p>
+                <p class="text-xs opacity-60 mt-1">Warm slate walls. Cool white pages. Deep teal bookmarks.</p>
+              </div>
+            </div>
+            <div class="p-4 text-xs text-white/30">Organized authority. You trust this room.</div>
+          </div>
+
+          <div class="flex items-center justify-center text-white/15 font-bold text-sm">OR</div>
+
+          <div class="tot-option" onclick="pickPalette(this, 'B')" style="padding:0;overflow:hidden">
+            <div class="p-6" style="background:linear-gradient(135deg,#faf5ef,#f0e6d6);border-radius:15px 15px 0 0">
+              <div class="flex gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg" style="background:#faf5ef;border:1px solid rgba(0,0,0,.1)"></div>
+                <div class="w-8 h-8 rounded-lg" style="background:#2d2d2d"></div>
+                <div class="w-8 h-8 rounded-lg" style="background:#FF6B5E"></div>
+                <div class="w-8 h-8 rounded-lg" style="background:#c4b5a0"></div>
+              </div>
+              <div class="text-sm text-left" style="color:#2d2d2d">
+                <p class="font-bold">The Design Studio</p>
+                <p class="text-xs opacity-60 mt-1">Light oak surfaces. Charcoal ink. Living coral sticky notes.</p>
+              </div>
+            </div>
+            <div class="p-4 text-xs text-white/30">Creative confidence. Ideas happen here.</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q17-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q18: Voice Test (Typography) ═══ -->
+      <div class="step" id="step-16">
+        <div class="phase-badge mb-3">Phase 6 · Visual</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Voice Test</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Same sentence, two voices. Which one sounds like your product?</p>
+
+        <div class="flex gap-4 flex-col md:flex-row">
+          <div class="tot-option" onclick="pickType(this, 'A')">
+            <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+            <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.5rem;line-height:1.1;margin-bottom:12px;color:var(--cream)">Your dashboard, reimagined.</div>
+            <div style="font-family:'DM Sans',sans-serif;font-size:.9rem;color:rgba(255,255,255,.5);line-height:1.6">Every metric you need, nothing you don't. Built for the way you actually work.</div>
+            <div class="mt-4 text-xs text-white/20">Geometric. Precise. Modern.</div>
+          </div>
+
+          <div class="flex items-center justify-center text-white/15 font-bold text-sm">OR</div>
+
+          <div class="tot-option" onclick="pickType(this, 'B')">
+            <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&display=swap" rel="stylesheet">
+            <div style="font-family:'Instrument Serif',serif;font-weight:400;font-size:1.6rem;line-height:1.1;margin-bottom:12px;color:var(--cream)">Your dashboard, reimagined.</div>
+            <div style="font-family:'DM Sans',sans-serif;font-size:.9rem;color:rgba(255,255,255,.5);line-height:1.6">Every metric you need, nothing you don't. Built for the way you actually work.</div>
+            <div class="mt-4 text-xs text-white/20">Warm contrast. Editorial. Approachable authority.</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q18-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q19: Density Test ═══ -->
+      <div class="step" id="step-17">
+        <div class="phase-badge mb-3">Phase 6 · Visual</div>
+        <h2 class="font-display font-bold text-2xl md:text-3xl mb-2">The Density Test</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Same app. Two densities. Which feels right?</p>
+
+        <div class="flex gap-4 flex-col md:flex-row">
+          <!-- Dense -->
+          <div class="tot-option" onclick="pickDensity(this, 'dense')" style="padding:0;text-align:left;overflow:hidden">
+            <div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06)">
+              <div class="text-xs text-white/20 font-bold uppercase tracking-wider">Dense: "The Cockpit"</div>
+            </div>
+            <div class="wire" style="border:none;border-radius:0;min-height:220px">
+              <div class="wire-row" style="min-height:220px">
+                <div class="wire-sidebar wire-border-r wire-col" style="justify-content:space-between;width:90px">
+                  <div style="padding:6px">
+                    <div style="font-size:.45rem;font-weight:700;color:rgba(255,107,53,.5);margin-bottom:4px">App</div>
+                    <div class="wire-col" style="gap:1px">
+                      <div class="wire-nav-item wire-nav-active" style="padding:3px 6px;font-size:.45rem"><svg class="hi"><use href="#hi-squares"/></svg> Dash</div>
+                      <div class="wire-nav-item" style="padding:3px 6px;font-size:.45rem"><svg class="hi"><use href="#hi-squares"/></svg> Invoices</div>
+                      <div class="wire-nav-item" style="padding:3px 6px;font-size:.45rem"><svg class="hi"><use href="#hi-squares"/></svg> Clients</div>
+                      <div class="wire-nav-item" style="padding:3px 6px;font-size:.45rem"><svg class="hi"><use href="#hi-squares"/></svg> Reports</div>
+                      <div class="wire-nav-item" style="padding:3px 6px;font-size:.45rem"><svg class="hi"><use href="#hi-squares"/></svg> Settings</div>
+                    </div>
+                  </div>
+                  <div style="padding:6px;border-top:1px solid rgba(255,255,255,.12)">
+                    <div class="wire-row" style="align-items:center;gap:4px">
+                      <div class="wire-avatar" style="width:14px;height:14px;font-size:.35rem">M</div>
+                      <span style="font-size:.4rem;color:rgba(255,255,255,.18)">Maria</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="wire-main wire-col">
+                  <div style="padding:4px 8px" class="wire-border-b">
+                    <span style="font-size:.5rem;font-weight:600;color:rgba(255,255,255,.35)">Dashboard</span>
+                  </div>
+                  <div style="padding:4px 8px" class="wire-border-b">
+                    <div class="wire-row" style="gap:3px">
+                      <div class="wire-kpi" style="padding:3px 4px"><div class="wire-kpi-val" style="font-size:.55rem">$12k</div><div class="wire-kpi-label" style="font-size:.35rem">Owed</div></div>
+                      <div class="wire-kpi" style="padding:3px 4px"><div class="wire-kpi-val" style="font-size:.55rem">$8k</div><div class="wire-kpi-label" style="font-size:.35rem">Paid</div></div>
+                      <div class="wire-kpi" style="padding:3px 4px"><div class="wire-kpi-val" style="font-size:.55rem;color:rgba(255,107,94,.5)">$3k</div><div class="wire-kpi-label" style="font-size:.35rem">Late</div></div>
+                      <div class="wire-kpi" style="padding:3px 4px"><div class="wire-kpi-val" style="font-size:.55rem">4</div><div class="wire-kpi-label" style="font-size:.35rem">Draft</div></div>
+                    </div>
+                  </div>
+                  <div style="padding:4px 8px">
+                    <table class="wire-table" style="font-size:.4rem">
+                      <thead><tr><th style="padding:3px 4px;font-size:.35rem">Invoice</th><th style="padding:3px 4px;font-size:.35rem">Client</th><th style="padding:3px 4px;font-size:.35rem">Amt</th><th style="padding:3px 4px;font-size:.35rem">Status</th></tr></thead>
+                      <tbody>
+                        <tr><td style="padding:3px 4px">041</td><td style="padding:3px 4px">Acme</td><td style="padding:3px 4px">$2.4k</td><td style="padding:3px 4px"><span class="wire-dot wire-dot-g"></span> <span class="wire-badge wire-badge-g" style="font-size:.3rem">Paid</span></td></tr>
+                        <tr><td style="padding:3px 4px">040</td><td style="padding:3px 4px">Globex</td><td style="padding:3px 4px">$1.8k</td><td style="padding:3px 4px"><span class="wire-dot wire-dot-y"></span> <span class="wire-badge wire-badge-y" style="font-size:.3rem">Sent</span></td></tr>
+                        <tr><td style="padding:3px 4px">039</td><td style="padding:3px 4px">Initech</td><td style="padding:3px 4px">$3.1k</td><td style="padding:3px 4px"><span class="wire-dot wire-dot-r"></span> <span class="wire-badge wire-badge-r" style="font-size:.3rem">Late</span></td></tr>
+                        <tr><td style="padding:3px 4px">038</td><td style="padding:3px 4px">Weyland</td><td style="padding:3px 4px">$900</td><td style="padding:3px 4px"><span class="wire-dot wire-dot-g"></span> <span class="wire-badge wire-badge-g" style="font-size:.3rem">Paid</span></td></tr>
+                        <tr><td style="padding:3px 4px">037</td><td style="padding:3px 4px">Stark</td><td style="padding:3px 4px">$4.2k</td><td style="padding:3px 4px"><span class="wire-dot wire-dot-y"></span> <span class="wire-badge wire-badge-y" style="font-size:.3rem">Sent</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:8px 14px;font-size:.5rem;color:rgba(255,255,255,.15)">Data table · 12 rows visible · keyboard-first</div>
+          </div>
+
+          <div class="flex items-center justify-center text-white/15 font-bold text-sm">OR</div>
+
+          <!-- Spacious -->
+          <div class="tot-option" onclick="pickDensity(this, 'spacious')" style="padding:0;text-align:left;overflow:hidden">
+            <div style="padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.06)">
+              <div class="text-xs text-white/20 font-bold uppercase tracking-wider">Spacious: "The Gallery"</div>
+            </div>
+            <div class="wire" style="border:none;border-radius:0;min-height:220px">
+              <div class="wire-row" style="min-height:220px">
+                <div class="wire-sidebar wire-border-r wire-col" style="justify-content:space-between;width:100px">
+                  <div style="padding:10px">
+                    <div style="font-size:.5rem;font-weight:700;color:rgba(255,107,53,.5);margin-bottom:8px">App</div>
+                    <div class="wire-col" style="gap:3px">
+                      <div class="wire-nav-item wire-nav-active" style="padding:5px 8px;font-size:.5rem"><svg class="hi"><use href="#hi-squares"/></svg> Dashboard</div>
+                      <div class="wire-nav-item" style="padding:5px 8px;font-size:.5rem"><svg class="hi"><use href="#hi-squares"/></svg> Invoices</div>
+                      <div class="wire-nav-item" style="padding:5px 8px;font-size:.5rem"><svg class="hi"><use href="#hi-squares"/></svg> Clients</div>
+                      <div class="wire-nav-item" style="padding:5px 8px;font-size:.5rem"><svg class="hi"><use href="#hi-squares"/></svg> Reports</div>
+                      <div class="wire-nav-item" style="padding:5px 8px;font-size:.5rem"><svg class="hi"><use href="#hi-squares"/></svg> Settings</div>
+                    </div>
+                  </div>
+                  <div style="padding:10px;border-top:1px solid rgba(255,255,255,.12)">
+                    <div class="wire-row" style="align-items:center;gap:6px">
+                      <div class="wire-avatar" style="width:18px;height:18px;font-size:.4rem">M</div>
+                      <div>
+                        <div style="font-size:.45rem;color:rgba(255,255,255,.3)">Maria D.</div>
+                        <div style="font-size:.35rem;color:rgba(255,255,255,.12)">Free plan</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="wire-main wire-col">
+                  <div style="padding:10px 14px" class="wire-border-b">
+                    <div style="font-size:.6rem;font-weight:600;color:rgba(255,255,255,.4)">Dashboard</div>
+                    <div style="font-size:.4rem;color:rgba(255,255,255,.15);margin-top:1px">Welcome back, Maria</div>
+                  </div>
+                  <div style="padding:10px 14px" class="wire-border-b">
+                    <div class="wire-row" style="gap:6px">
+                      <div class="wire-kpi" style="padding:8px"><div class="wire-kpi-val" style="font-size:.7rem">$12.4k</div><div class="wire-kpi-label" style="font-size:.4rem;margin-top:2px">Outstanding</div></div>
+                      <div class="wire-kpi" style="padding:8px"><div class="wire-kpi-val" style="font-size:.7rem">$8.2k</div><div class="wire-kpi-label" style="font-size:.4rem;margin-top:2px">Paid</div></div>
+                      <div class="wire-kpi" style="padding:8px"><div class="wire-kpi-val" style="font-size:.7rem;color:rgba(255,107,94,.5)">$3.1k</div><div class="wire-kpi-label" style="font-size:.4rem;margin-top:2px">Overdue</div></div>
+                    </div>
+                  </div>
+                  <div style="padding:10px 14px">
+                    <div style="font-size:.4rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.15);margin-bottom:8px">Recent Activity</div>
+                    <div class="wire-col" style="gap:8px">
+                      <div class="wire-row" style="align-items:center;gap:6px">
+                        <div class="wire-dot wire-dot-g"></div>
+                        <div style="flex:1"><div style="font-size:.5rem;color:rgba(255,255,255,.3)">Acme — $2,400</div><div style="font-size:.35rem;color:rgba(255,255,255,.12)">Paid 2h ago</div></div>
+                      </div>
+                      <div class="wire-row" style="align-items:center;gap:6px">
+                        <div class="wire-dot wire-dot-y"></div>
+                        <div style="flex:1"><div style="font-size:.5rem;color:rgba(255,255,255,.3)">Globex — $1,800</div><div style="font-size:.35rem;color:rgba(255,255,255,.12)">Due in 5 days</div></div>
+                      </div>
+                      <div class="wire-row" style="align-items:center;gap:6px">
+                        <div class="wire-dot wire-dot-r"></div>
+                        <div style="flex:1"><div style="font-size:.5rem;color:rgba(255,255,255,.3)">Initech — $3,100</div><div style="font-size:.35rem;color:rgba(255,255,255,.12)">3 days overdue</div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="padding:8px 14px;font-size:.5rem;color:rgba(255,255,255,.15)">Activity feed · breathing room · guided</div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-8">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Back</button>
+          <button class="btn-continue" id="q19-next" onclick="nextStep()" disabled>Continue <svg class="hi"><use href="#hi-arrow-right"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ Q20: The Brand Reveal ═══ -->
+      <div class="step" id="step-18">
+        <div class="phase-badge mb-3">Phase 7 · Reveal</div>
+        <h2 class="font-display font-bold text-[clamp(2rem,4vw,3rem)] mb-2">Your Brand.</h2>
+        <p class="text-white/40 text-sm mb-8 text-center">Everything you told us led here. This is inevitable, not chosen.</p>
+
+        <div class="spec-card mb-6">
+          <div class="grid gap-6 md:grid-cols-2">
+            <div>
+              <div class="text-xs text-amber font-bold uppercase tracking-wider mb-2">Onliness Statement</div>
+              <p class="text-white/80 text-base leading-relaxed" id="reveal-onliness">"..."</p>
+            </div>
+            <div>
+              <div class="text-xs text-amber font-bold uppercase tracking-wider mb-2">Personality</div>
+              <p class="text-white/80 text-sm" id="reveal-personality">...</p>
+            </div>
+            <div>
+              <div class="text-xs text-amber font-bold uppercase tracking-wider mb-2">Emotional Arc</div>
+              <p class="text-white/80 text-sm" id="reveal-emotion">...</p>
+            </div>
+            <div>
+              <div class="text-xs text-amber font-bold uppercase tracking-wider mb-2">Behavioral Tone</div>
+              <p class="text-white/80 text-sm" id="reveal-behavior">...</p>
+            </div>
+          </div>
+
+          <hr class="border-white/8 my-6">
+
+          <div class="grid gap-6 md:grid-cols-3">
+            <div>
+              <div class="text-xs text-amber font-bold uppercase tracking-wider mb-2">Palette</div>
+              <div id="reveal-palette" class="flex gap-2"></div>
+            </div>
+            <div>
+              <div class="text-xs text-amber font-bold uppercase tracking-wider mb-2">Typography</div>
+              <p class="text-white/80 text-sm" id="reveal-type">...</p>
+            </div>
+            <div>
+              <div class="text-xs text-amber font-bold uppercase tracking-wider mb-2">Density</div>
+              <p class="text-white/80 text-sm" id="reveal-density">...</p>
+            </div>
+          </div>
+
+          <hr class="border-white/8 my-6">
+
+          <div>
+            <div class="text-xs text-amber font-bold uppercase tracking-wider mb-2">The Roast-Proof Test</div>
+            <p class="text-white/60 text-sm italic" id="reveal-roast">"..."</p>
+          </div>
+        </div>
+
+        <div class="flex gap-3">
+          <button class="btn-back" onclick="goBack()"><svg class="hi"><use href="#hi-arrow-left"/></svg> Change something</button>
+          <button class="btn-continue" onclick="lockBrand()">Lock my brand <svg class="hi" style="width:1em;height:1em;display:inline"><use href="#hi-lock-closed"/></svg></button>
+        </div>
+      </div>
+
+      <!-- ═══ LOCKED ═══ -->
+      <div class="step" id="step-locked">
+        <div class="flex flex-col items-center text-center mt-16">
+          <div class="text-6xl mb-6"><svg class="hi" style="width:1em;height:1em"><use href="#hi-lock-closed"/></svg></div>
+          <h2 class="font-display font-bold text-[clamp(2rem,5vw,3.5rem)] leading-tight mb-4">
+            Brand <span class="text-orange">locked</span>.
+          </h2>
+          <p class="text-white/45 text-lg max-w-md leading-relaxed mb-4">
+            Your brand is no longer a feeling. It's a system. Every component, every color, every interaction — decided and documented.
+          </p>
+          <p class="text-white/25 text-sm mb-8">Your brand has been saved. It will carry into any future session.</p>
+          <div class="flex flex-col gap-3 items-center" id="locked-actions">
+            <!-- Dynamic: shows App Discovery link if no spec exists, or "all done" if both are locked -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ═══ STATE ═══
+    const state = {
+      currentStep: 'intro',
+      totalSteps: 18,
+      answers: {},
+      moods: { open: null, close: null },
+      hacks: new Set(),
+      refs: new Set(),
+      intake: { file: null, text: '', hasContent: false },
+    };
+
+    // Step routing — supports both numeric steps and named steps
+    const NAMED_STEPS = ['intro', 'intake', 'intake-summary'];
+    const stepOrder = [
+      'intro', 'intake', 'intake-summary',
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
+      'locked'
+    ];
+
+    const phaseMap = [
+      { steps: ['intro','intake','intake-summary'], label: 'Intake' },
+      { steps: [1,2,3,4], label: 'Context', idx: 0 },
+      { steps: [5,6,7], label: 'Positioning', idx: 1 },
+      { steps: [8,9], label: 'Emotion', idx: 2 },
+      { steps: [10,11,12], label: 'Personality', idx: 3 },
+      { steps: [13,14], label: 'Behavior', idx: 4 },
+      { steps: [15,16,17], label: 'Visual', idx: 5 },
+      { steps: [18], label: 'Reveal', idx: 6 },
+    ];
+
+    // ═══ NAVIGATION ═══
+    function getStepEl(n) {
+      if (typeof n === 'string') return document.getElementById('step-' + n);
+      if (n >= 1 && n <= 18) return document.getElementById('step-' + n);
+      if (n === 19) return document.getElementById('step-locked');
+      return null;
+    }
+
+    function getStepIndex(n) {
+      return stepOrder.indexOf(n);
+    }
+
+    function showStep(n) {
+      const prevEl = getStepEl(state.currentStep);
+      const nextEl = getStepEl(n);
+      if (!prevEl || !nextEl) return;
+
+      const goingForward = getStepIndex(n) > getStepIndex(state.currentStep);
+
+      prevEl.classList.remove('active');
+      if (goingForward) prevEl.classList.add('exit-up');
+      nextEl.classList.remove('exit-up');
+
+      requestAnimationFrame(() => {
+        nextEl.classList.add('active');
+        state.currentStep = n;
+        updateProgress();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    }
+
+    function startGame() { showStep(1); }
+
+    function nextStep() {
+      const idx = getStepIndex(state.currentStep);
+      if (idx < stepOrder.length - 1) {
+        showStep(stepOrder[idx + 1]);
+      }
+    }
+
+    function goBack() {
+      const idx = getStepIndex(state.currentStep);
+      if (idx > 0) {
+        // Skip intake-summary when going back if no prior work
+        let prevIdx = idx - 1;
+        if (stepOrder[prevIdx] === 'intake-summary' && !state.intake.hasContent) {
+          prevIdx--;
+        }
+        showStep(stepOrder[prevIdx]);
+      }
+    }
+
+    function updateProgress() {
+      // Only count game steps (1-18) for progress
+      const gameStep = typeof state.currentStep === 'number' ? state.currentStep : 0;
+      const pct = Math.min(100, (gameStep / state.totalSteps) * 100);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('header-step').textContent =
+        gameStep > 0 ? Math.min(gameStep, state.totalSteps) + ' / ' + state.totalSteps : '—';
+
+      // Update phase labels
+      const currentPhase = phaseMap.find(p => p.steps.includes(state.currentStep));
+      for (let i = 0; i < 7; i++) {
+        const el = document.getElementById('phase-label-' + i);
+        if (!el) continue;
+        const phase = phaseMap.find(p => p.idx === i);
+        if (phase && currentPhase && phase.idx === currentPhase.idx) {
+          el.classList.add('text-orange/60');
+          el.classList.remove('text-white/20');
+        } else {
+          el.classList.remove('text-orange/60');
+          el.classList.add('text-white/20');
+        }
+      }
+    }
+
+    // ═══ INTAKE — File upload & prior work ═══
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+
+    if (dropZone) {
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--orange)';
+        dropZone.style.background = 'rgba(255,107,53,.04)';
+      });
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.style.borderColor = '';
+        dropZone.style.background = '';
+      });
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '';
+        dropZone.style.background = '';
+        if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+      });
+    }
+
+    if (fileInput) {
+      fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) handleFile(fileInput.files[0]);
+      });
+    }
+
+    function handleFile(file) {
+      state.intake.file = file;
+      document.getElementById('file-preview').classList.remove('hidden');
+      document.getElementById('file-name').textContent = file.name + ' (' + formatSize(file.size) + ')';
+    }
+
+    function clearFile() {
+      state.intake.file = null;
+      document.getElementById('file-preview').classList.add('hidden');
+      fileInput.value = '';
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    function toggleRef(el, ref) {
+      el.classList.toggle('picked');
+      if (state.refs.has(ref)) {
+        state.refs.delete(ref);
+      } else {
+        state.refs.add(ref);
+      }
+    }
+
+    function processIntake() {
+      const pastedText = document.getElementById('intake-paste').value.trim();
+      const hasFile = state.intake.file !== null;
+      const hasText = pastedText.length > 0;
+      const hasRefs = state.refs.size > 0;
+
+      state.intake.text = pastedText;
+      state.intake.hasContent = hasFile || hasText;
+
+      if (state.intake.hasContent) {
+        // Show the summary step
+        populateIntakeSummary(hasFile, hasText, pastedText);
+        showStep('intake-summary');
+      } else {
+        // Skip straight to game
+        startGame();
+      }
+    }
+
+    function populateIntakeSummary(hasFile, hasText, text) {
+      const findings = document.getElementById('intake-findings');
+      if (!findings) return;
+
+      let html = '<div class="space-y-4">';
+
+      if (hasFile) {
+        html += `
+          <div class="flex items-start gap-3">
+            <span class="text-sage text-lg"><svg class="hi"><use href="#hi-check"/></svg></span>
+            <div>
+              <div class="text-sm font-bold text-white/80">File received</div>
+              <div class="text-xs text-white/40">${state.intake.file.name} — Claude will parse this and pre-fill what it can.</div>
+            </div>
+          </div>`;
+      }
+
+      if (hasText) {
+        // Simple heuristic: detect what they've shared
+        const lower = text.toLowerCase();
+        const detected = [];
+
+        if (lower.includes('competitor') || lower.includes('vs') || lower.includes('better than'))
+          detected.push({ icon: '<svg class="hi" style="fill:none;stroke:currentColor;stroke-width:1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"/></svg>', label: 'Competitors mentioned', detail: 'Will pre-populate the Lineup (Q6) and run category analysis.' });
+        if (lower.includes('user') || lower.includes('customer') || lower.includes('audience') || lower.includes('people who'))
+          detected.push({ icon: '<svg class="hi" style="fill:none;stroke:currentColor;stroke-width:1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z"/></svg>', label: 'User description detected', detail: 'Will inform the User Snapshot (Q2) and emotional arc.' });
+        if (lower.includes('color') || lower.includes('palette') || lower.includes('dark') || lower.includes('light') || lower.includes('brand'))
+          detected.push({ icon: '<svg class="hi" style="fill:none;stroke:currentColor;stroke-width:1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z"/></svg>', label: 'Brand preferences noted', detail: 'Will constrain palette and visual options.' });
+        if (lower.includes('like') && (lower.includes('feel') || lower.includes('vibe') || lower.includes('similar')))
+          detected.push({ icon: '<svg class="hi" style="fill:none;stroke:currentColor;stroke-width:1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z"/></svg>', label: 'North star reference found', detail: 'Will pre-populate the North Star (Q14).' });
+        if (lower.includes('problem') || lower.includes('struggle') || lower.includes('pain') || lower.includes('frustrated'))
+          detected.push({ icon: '<svg class="hi" style="fill:none;stroke:currentColor;stroke-width:1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>', label: 'Problem definition found', detail: 'Will streamline the Elevator Pitch (Q1).' });
+
+        if (detected.length === 0) {
+          detected.push({ icon: '<svg class="hi" style="fill:none;stroke:currentColor;stroke-width:1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"/></svg>', label: 'Notes received', detail: 'Claude will extract what it can and adapt the questions.' });
+        }
+
+        detected.forEach(d => {
+          html += `
+            <div class="flex items-start gap-3">
+              <span class="text-lg">${d.icon}</span>
+              <div>
+                <div class="text-sm font-bold text-white/80">${d.label}</div>
+                <div class="text-xs text-white/40">${d.detail}</div>
+              </div>
+            </div>`;
+        });
+
+        // Show a preview of what they pasted
+        const preview = text.length > 200 ? text.substring(0, 200) + '...' : text;
+        html += `
+          <hr class="border-white/8 my-4">
+          <div>
+            <div class="text-xs text-white/25 font-bold uppercase tracking-wider mb-2">Your notes (preview)</div>
+            <div class="text-xs text-white/30 italic p-3 rounded-lg" style="background:rgba(255,255,255,.02)">"${preview}"</div>
+          </div>`;
+      }
+
+      html += '</div>';
+      findings.innerHTML = html;
+    }
+
+    // ═══ VALIDATION — enable Continue when inputs are filled ═══
+    function watchInputs(stepId, inputIds, btnId) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      const inputs = inputIds.map(id => document.getElementById(id)).filter(Boolean);
+      inputs.forEach(input => {
+        input.addEventListener('input', () => {
+          const allFilled = inputs.every(i => {
+            if (i.tagName === 'INPUT' || i.tagName === 'TEXTAREA' || i.tagName === 'SELECT') return i.value.trim().length > 0;
+            return i.textContent.trim().length > 0;
+          });
+          btn.disabled = !allFilled;
+        });
+      });
+    }
+
+    watchInputs('step-1', ['q1-who','q1-problem','q1-solution','q1-outcome'], 'q1-next');
+    watchInputs('step-2', ['q2-snapshot'], 'q2-next');
+    watchInputs('step-4', ['q4-situation','q4-functional','q4-emotional'], 'q4-next');
+    watchInputs('step-6', ['q6-comp1','q6-desired-roast'], 'q6-next');
+    watchInputs('step-7', ['q8-offering','q8-category','q8-differentiator'], 'q8-next');
+    watchInputs('step-12', ['q14-brand'], 'q14-next');
+
+    // ═══ GAME MECHANICS ═══
+
+    // Q3: Hack selection (multi-select)
+    function toggleHack(el, hack) {
+      el.classList.toggle('picked');
+      if (state.hacks.has(hack)) {
+        state.hacks.delete(hack);
+      } else {
+        state.hacks.add(hack);
+      }
+      if (hack === 'other') {
+        document.getElementById('q3-other-wrap').classList.toggle('hidden', !state.hacks.has('other'));
+      }
+      document.getElementById('q3-next').disabled = state.hacks.size === 0;
+    }
+
+    // Q5: Shelf pick (single)
+    function pickShelf(el, type) {
+      el.closest('.grid').querySelectorAll('.scenario-card').forEach(c => c.classList.remove('picked'));
+      el.classList.add('picked');
+      state.answers.shelfType = type;
+      document.getElementById('q5-next').disabled = false;
+    }
+
+    // Q9+Q10: Mood selection
+    function pickMood(el, group, mood) {
+      el.closest('.grid').querySelectorAll('.scenario-card').forEach(c => c.classList.remove('picked'));
+      el.classList.add('picked');
+      state.moods[group] = mood;
+      document.getElementById('q9-next').disabled = !(state.moods.open && state.moods.close);
+    }
+
+    // Q11: Session type
+    function pickSession(el, type) {
+      el.closest('.flex').querySelectorAll('.tot-option').forEach(c => c.classList.remove('chosen'));
+      el.classList.add('chosen');
+      state.answers.session = type;
+      document.getElementById('q11-next').disabled = false;
+    }
+
+    // Q12: Archetype
+    function pickArchetype(el, type) {
+      el.closest('.grid').querySelectorAll('.scenario-card').forEach(c => c.classList.remove('picked'));
+      el.classList.add('picked');
+      state.answers.archetype = type;
+      document.getElementById('q12-next').disabled = false;
+    }
+
+    // Q15: Error style
+    function pickError(el, style) {
+      el.closest('.grid').querySelectorAll('.scenario-card').forEach(c => c.classList.remove('picked'));
+      el.classList.add('picked');
+      state.answers.errorStyle = style;
+      document.getElementById('q15-next').disabled = false;
+    }
+
+    // Q16: Celebration
+    function pickCelebration(el, style) {
+      el.closest('.grid').querySelectorAll('.scenario-card').forEach(c => c.classList.remove('picked'));
+      el.classList.add('picked');
+      state.answers.celebration = style;
+      document.getElementById('q16-next').disabled = false;
+    }
+
+    // Q17: Palette
+    function pickPalette(el, choice) {
+      el.closest('.flex').querySelectorAll('.tot-option').forEach(c => c.classList.remove('chosen'));
+      el.classList.add('chosen');
+      state.answers.palette = choice;
+      document.getElementById('q17-next').disabled = false;
+    }
+
+    // Q18: Typography
+    function pickType(el, choice) {
+      el.closest('.flex').querySelectorAll('.tot-option').forEach(c => c.classList.remove('chosen'));
+      el.classList.add('chosen');
+      state.answers.typography = choice;
+      document.getElementById('q18-next').disabled = false;
+    }
+
+    // Q19: Density
+    function pickDensity(el, choice) {
+      el.closest('.flex').querySelectorAll('.tot-option').forEach(c => c.classList.remove('chosen'));
+      el.classList.add('chosen');
+      state.answers.density = choice;
+      document.getElementById('q19-next').disabled = false;
+    }
+
+    // ═══ REVEAL ═══
+    // Override nextStep for step 17 → 18 to populate reveal
+    const _originalShowStep = showStep;
+    showStep = function(n) {
+      if (n === 18) populateReveal();
+      _originalShowStep(n);
+    };
+
+    function _val(el) {
+      if (!el) return '';
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return el.value.trim();
+      return el.textContent.trim();
+    }
+
+    function populateReveal() {
+      const o = document.getElementById('q8-offering');
+      const c = document.getElementById('q8-category');
+      const d = document.getElementById('q8-differentiator');
+      if (o && c && d) {
+        document.getElementById('reveal-onliness').textContent =
+          `"Our ${_val(o)} is the only ${_val(c)} that ${_val(d)}."`;
+      }
+
+      const archetypeMap = {
+        analyst: 'The Analyst — data-driven, factual, trusted authority',
+        coach: 'The Coach — guiding, question-asking, elevating',
+        expert: 'The Quiet Expert — sparse, brilliant, deliberate',
+        creative: 'The Creative — connecting dots, visual, inventive',
+        host: 'The Host — caring, organized, anticipating needs',
+        maverick: 'The Maverick — bold, polarizing, magnetic',
+      };
+      document.getElementById('reveal-personality').textContent =
+        archetypeMap[state.answers.archetype] || '—';
+
+      const moodMap = {
+        tense: 'Tense/stressed', calm: 'Calm/focused', hype: 'Excited/building',
+        bored: 'Bored/obligated', panic: 'Panicked/urgent',
+        victory: 'Victorious', done: 'Satisfied', capable: 'Empowered',
+        peace: 'Relieved',
+      };
+      document.getElementById('reveal-emotion').textContent =
+        `${moodMap[state.moods.open] || '?'} → ${moodMap[state.moods.close] || '?'}`;
+
+      const errorMap = { factual: 'Matter-of-fact', encouraging: 'Encouraging', silent: 'Silent' };
+      const celebMap = { respect: 'Respects time', momentum: 'Builds momentum', showoff: 'Makes them shine' };
+      document.getElementById('reveal-behavior').textContent =
+        `Errors: ${errorMap[state.answers.errorStyle] || '?'} · Wins: ${celebMap[state.answers.celebration] || '?'}`;
+
+      // Palette swatches
+      const paletteEl = document.getElementById('reveal-palette');
+      paletteEl.innerHTML = '';
+      const palettes = {
+        A: ['#1a1a2e','#e8e0d4','#0d9488','#334155'],
+        B: ['#faf5ef','#2d2d2d','#FF6B5E','#c4b5a0'],
+      };
+      const colors = palettes[state.answers.palette] || palettes.A;
+      colors.forEach(color => {
+        const swatch = document.createElement('div');
+        swatch.className = 'w-8 h-8 rounded-lg';
+        swatch.style.background = color;
+        swatch.style.border = '1px solid rgba(255,255,255,.1)';
+        paletteEl.appendChild(swatch);
+      });
+
+      const typeMap = { A: 'Geometric (Space Grotesk + DM Sans)', B: 'Editorial (Instrument Serif + DM Sans)' };
+      document.getElementById('reveal-type').textContent = typeMap[state.answers.typography] || '—';
+
+      const densityMap = { dense: 'Dense — The Cockpit', spacious: 'Spacious — The Gallery' };
+      document.getElementById('reveal-density').textContent = densityMap[state.answers.density] || '—';
+
+      const roast = document.getElementById('q6-desired-roast');
+      document.getElementById('reveal-roast').textContent =
+        roast && _val(roast) ? `"${_val(roast)}"` : '"—"';
+    }
+
+    function lockBrand() {
+      // Save brand to localStorage so App Discovery can pick it up
+      const brand = {
+        timestamp: new Date().toISOString(),
+        onliness: (() => {
+          const o = document.getElementById('q8-offering');
+          const c = document.getElementById('q8-category');
+          const d = document.getElementById('q8-differentiator');
+          return (o && c && d) ? `Our ${_val(o)} is the only ${_val(c)} that ${_val(d)}.` : '';
+        })(),
+        archetype: state.answers.archetype || '',
+        emotionalArc: `${state.moods.open || '?'} → ${state.moods.close || '?'}`,
+        session: state.answers.session || '',
+        errorStyle: state.answers.errorStyle || '',
+        celebration: state.answers.celebration || '',
+        palette: state.answers.palette || '',
+        typography: state.answers.typography || '',
+        density: state.answers.density || '',
+        northStar: _val(document.getElementById('q14-brand')),
+        desiredRoast: _val(document.getElementById('q6-desired-roast')),
+        competitors: [
+          _val(document.getElementById('q6-comp1')),
+          _val(document.getElementById('q6-comp2')),
+          _val(document.getElementById('q6-comp3')),
+        ].filter(Boolean),
+        sliders: {
+          approachableVsAuthoritative: (document.getElementById('slider-1') || {}).value || 50,
+          minimalVsRich: (document.getElementById('slider-2') || {}).value || 50,
+          playfulVsSerious: (document.getElementById('slider-3') || {}).value || 50,
+        },
+      };
+
+      try { localStorage.setItem('souped-brand', JSON.stringify(brand)); } catch (e) { /* quota exceeded */ }
+
+      showStep('locked');
+      populateLockedActions();
+    }
+
+    // ═══ ON LOAD: Check for App Discovery spec ═══
+    (function checkForAppSpec() {
+      try {
+        const spec = JSON.parse(localStorage.getItem('souped-app-spec') || 'null');
+        if (!spec) return;
+
+        // Pre-fill intake paste area with spec summary
+        const paste = document.getElementById('intake-paste');
+        if (paste && !paste.value) {
+          paste.value = `[App Discovery spec detected — locked ${spec.timestamp}]\n` +
+            `Product: ${spec.name || '—'} (${spec.appType || '—'})\n` +
+            `Beachhead: ${spec.beachhead || '—'}\n` +
+            `Problem: ${spec.problem || '—'}\n` +
+            `User: ${spec.user?.role || '—'}, ${spec.user?.goal || '—'}\n` +
+            `Differentiator: ${spec.differentiator || '—'}\n` +
+            `MVP: ${(spec.mvpFeatures || []).join(', ') || '—'}`;
+          paste.style.color = 'rgba(255,187,51,.6)';
+        }
+
+        // Pre-fill Q1 fields from spec (user can confirm or edit)
+        const q1who = document.getElementById('q1-who');
+        const q1problem = document.getElementById('q1-problem');
+        const q1solution = document.getElementById('q1-solution');
+        const q1outcome = document.getElementById('q1-outcome');
+
+        if (q1who && spec.user?.role) q1who.textContent = spec.user.role;
+        if (q1problem && spec.problem) q1problem.textContent = spec.problem;
+        if (q1solution && spec.pitch?.how) q1solution.textContent = spec.pitch.how;
+        if (q1outcome && spec.user?.goal) q1outcome.textContent = spec.user.goal;
+
+        // Pre-fill competitors if available
+        if (spec.name) {
+          const comp1 = document.getElementById('q6-comp1');
+          // Don't pre-fill competitors — those are brand-specific
+        }
+      } catch (e) { /* no-op */ }
+    })();
+
+    // ═══ EXPORT — PDF + Markdown ═══
+    function getBrandData() {
+      const archetypeMap = {
+        analyst: 'The Analyst — data-driven, factual, trusted authority',
+        coach: 'The Coach — guiding, question-asking, elevating',
+        expert: 'The Quiet Expert — sparse, brilliant, deliberate',
+        creative: 'The Creative — connecting dots, visual, inventive',
+        host: 'The Host — caring, organized, anticipating needs',
+        maverick: 'The Maverick — bold, polarizing, magnetic',
+      };
+      const moodMap = {
+        tense: 'Tense/stressed', calm: 'Calm/focused', hype: 'Excited/building',
+        bored: 'Bored/obligated', panic: 'Panicked/urgent',
+        victory: 'Victorious', done: 'Satisfied', capable: 'Empowered',
+        peace: 'Relieved',
+      };
+      const errorMap = { factual: 'Matter-of-fact', encouraging: 'Encouraging', silent: 'Silent' };
+      const celebMap = { respect: 'Respects time', momentum: 'Builds momentum', showoff: 'Makes them shine' };
+      const typeMap = { A: 'Geometric (Space Grotesk + DM Sans)', B: 'Editorial (Instrument Serif + DM Sans)' };
+      const densityMap = { dense: 'Dense — The Cockpit', spacious: 'Spacious — The Gallery' };
+      const paletteMap = { A: 'The Research Library — warm slate, cream, deep teal', B: 'The Design Studio — light oak, charcoal, coral' };
+      const sessionMap = { cockpit: 'Daily driver (Cockpit)', vending: 'Occasional visit (Vending Machine)' };
+
+      const o = document.getElementById('q8-offering');
+      const c = document.getElementById('q8-category');
+      const d = document.getElementById('q8-differentiator');
+
+      return {
+        onliness: (o && c && d) ? `Our ${_val(o)} is the only ${_val(c)} that ${_val(d)}.` : '—',
+        offering: _val(o),
+        archetype: archetypeMap[state.answers.archetype] || '—',
+        archetypeKey: state.answers.archetype || '—',
+        emotionOpen: moodMap[state.moods.open] || '—',
+        emotionClose: moodMap[state.moods.close] || '—',
+        session: sessionMap[state.answers.session] || '—',
+        errorStyle: errorMap[state.answers.errorStyle] || '—',
+        celebration: celebMap[state.answers.celebration] || '—',
+        palette: paletteMap[state.answers.palette] || '—',
+        paletteKey: state.answers.palette || '—',
+        typography: typeMap[state.answers.typography] || '—',
+        density: densityMap[state.answers.density] || '—',
+        northStar: _val(document.getElementById('q14-brand')) || '—',
+        desiredRoast: _val(document.getElementById('q6-desired-roast')) || '—',
+        competitors: [
+          _val(document.getElementById('q6-comp1')),
+          _val(document.getElementById('q6-comp2')),
+          _val(document.getElementById('q6-comp3')),
+        ].filter(Boolean),
+        sliders: {
+          approachable: (document.getElementById('slider-1') || {}).value || 50,
+          minimal: (document.getElementById('slider-2') || {}).value || 50,
+          playful: (document.getElementById('slider-3') || {}).value || 50,
+        },
+        who: _val(document.getElementById('q1-who')) || '—',
+        problem: _val(document.getElementById('q1-problem')) || '—',
+        solution: _val(document.getElementById('q1-solution')) || '—',
+        outcome: _val(document.getElementById('q1-outcome')) || '—',
+        situation: _val(document.getElementById('q4-situation')) || '—',
+        functional: _val(document.getElementById('q4-functional')) || '—',
+        emotional: _val(document.getElementById('q4-emotional')) || '—',
+      };
+    }
+
+    function generateBrandMarkdown() {
+      const d = getBrandData();
+      const date = new Date().toISOString().split('T')[0];
+      return `---
+title: "${d.offering || 'Brand'} — Brand Identity"
+date: ${date}
+type: brand-studio
+generated-by: Souped Brand Studio Game
+---
+
+# ${d.offering || 'Brand'} — Brand Identity
+
+**Date:** ${date}
+
+---
+
+## Positioning
+
+**Onliness Statement:**
+${d.onliness}
+
+**Competitors:** ${d.competitors.join(', ') || 'None listed'}
+
+**Desired Roast:** "${d.desiredRoast}"
+
+---
+
+## Context
+
+- **Who:** ${d.who}
+- **Problem:** ${d.problem}
+- **Solution:** ${d.solution}
+- **Outcome:** ${d.outcome}
+
+**The Real Job:**
+When the user ${d.situation}, they want to ${d.functional} so they can feel ${d.emotional}.
+
+---
+
+## Personality
+
+**Archetype:** ${d.archetype}
+
+**Brand Sliders:**
+- Approachable ←${d.sliders.approachable}→ Authoritative
+- Minimal ←${d.sliders.minimal}→ Rich
+- Playful ←${d.sliders.playful}→ Serious
+
+**North Star:** ${d.northStar}
+
+---
+
+## Emotional Arc
+
+- **Entry mood:** ${d.emotionOpen}
+- **Exit mood:** ${d.emotionClose}
+
+**Session type:** ${d.session}
+
+---
+
+## Behavioral Tone
+
+- **Error handling:** ${d.errorStyle}
+- **Celebrations:** ${d.celebration}
+
+---
+
+## Visual System
+
+- **Palette:** ${d.palette}
+- **Typography:** ${d.typography}
+- **Density:** ${d.density}
+
+---
+
+*Generated by Souped Brand Studio Game*
+`;
+    }
+
+    function downloadBrandMarkdown() {
+      const md = generateBrandMarkdown();
+      const d = getBrandData();
+      const blob = new Blob([md], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (d.offering.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'brand') + '-identity.md';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function downloadBrandPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+      const d = getBrandData();
+      const margin = 20;
+      const pageWidth = 170;
+      let y = 20;
+
+      function addText(text, size, style, color) {
+        doc.setFontSize(size);
+        doc.setFont('helvetica', style || 'normal');
+        doc.setTextColor(...(color || [30, 30, 30]));
+        const lines = doc.splitTextToSize(String(text), pageWidth);
+        if (y + lines.length * size * 0.5 > 280) { doc.addPage(); y = 20; }
+        doc.text(lines, margin, y);
+        y += lines.length * size * 0.45 + 2;
+      }
+
+      function addSpacer(h) { y += h || 4; }
+      function addLine() { doc.setDrawColor(220,220,220); doc.line(margin, y, margin + pageWidth, y); y += 6; }
+
+      // Header
+      addText((d.offering || 'Brand') + ' — Brand Identity', 22, 'bold');
+      addText(new Date().toISOString().split('T')[0], 10, 'normal', [120,120,120]);
+      addSpacer(4);
+      addLine();
+
+      // Onliness
+      addText('POSITIONING', 9, 'bold', [255,107,53]);
+      addSpacer(2);
+      addText(d.onliness, 12, 'bold');
+      addSpacer(2);
+      if (d.competitors.length) addText('Competitors: ' + d.competitors.join(', '), 10, 'normal', [80,80,80]);
+      addText('Desired Roast: "' + d.desiredRoast + '"', 10, 'italic', [80,80,80]);
+      addLine();
+
+      // Context
+      addText('CONTEXT', 9, 'bold', [255,107,53]);
+      addSpacer(2);
+      addText('Who: ' + d.who, 10, 'normal');
+      addText('Problem: ' + d.problem, 10, 'normal');
+      addText('Solution: ' + d.solution, 10, 'normal');
+      addText('Outcome: ' + d.outcome, 10, 'normal');
+      addSpacer(2);
+      addText('When the user ' + d.situation + ', they want to ' + d.functional + ' so they can feel ' + d.emotional + '.', 10, 'italic', [80,80,80]);
+      addLine();
+
+      // Personality
+      addText('PERSONALITY', 9, 'bold', [255,107,53]);
+      addSpacer(2);
+      addText(d.archetype, 11, 'bold');
+      addSpacer(2);
+      addText('Approachable ←' + d.sliders.approachable + '→ Authoritative', 10, 'normal', [80,80,80]);
+      addText('Minimal ←' + d.sliders.minimal + '→ Rich', 10, 'normal', [80,80,80]);
+      addText('Playful ←' + d.sliders.playful + '→ Serious', 10, 'normal', [80,80,80]);
+      addSpacer(2);
+      addText('North Star: ' + d.northStar, 10, 'bold');
+      addLine();
+
+      // Emotional Arc
+      addText('EMOTIONAL ARC', 9, 'bold', [255,107,53]);
+      addSpacer(2);
+      addText(d.emotionOpen + '  →  ' + d.emotionClose, 12, 'bold');
+      addText('Session: ' + d.session, 10, 'normal', [80,80,80]);
+      addLine();
+
+      // Behavior
+      addText('BEHAVIORAL TONE', 9, 'bold', [255,107,53]);
+      addSpacer(2);
+      addText('Errors: ' + d.errorStyle, 10, 'normal');
+      addText('Celebrations: ' + d.celebration, 10, 'normal');
+      addLine();
+
+      // Visual
+      addText('VISUAL SYSTEM', 9, 'bold', [255,107,53]);
+      addSpacer(2);
+      addText('Palette: ' + d.palette, 10, 'bold');
+      addText('Typography: ' + d.typography, 10, 'normal');
+      addText('Density: ' + d.density, 10, 'normal');
+
+      // Footer
+      addSpacer(10);
+      addText('Generated by Souped Brand Studio Game', 8, 'italic', [180,180,180]);
+
+      doc.save((d.offering.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'brand') + '-identity.pdf');
+    }
+
+    // ═══ LOCKED ACTIONS — dynamic based on what exists ═══
+    function populateLockedActions() {
+      const el = document.getElementById('locked-actions');
+      if (!el) return;
+
+      let hasSpec = false;
+      try { hasSpec = !!localStorage.getItem('souped-app-spec'); } catch (e) {}
+
+      let html = '';
+      if (hasSpec) {
+        html += `<div class="game-card text-center" style="max-width:400px">
+          <div class="text-sage text-sm font-bold mb-1"><svg class="hi"><use href="#hi-check"/></svg> App spec + Brand — both locked</div>
+          <div class="text-white/30 text-xs">You're ready to build. Use these with Claude to generate your themed, production-ready app.</div>
+        </div>`;
+      } else {
+        html += `<a href="../app-game/index.html" class="btn-continue">Define your app first <svg class="hi"><use href="#hi-arrow-right"/></svg></a>
+          <p class="text-white/20 text-xs mt-2">Or download your brand and use it standalone.</p>`;
+      }
+
+      html += `<div class="flex gap-3 mt-4">
+        <button class="btn-back" onclick="downloadBrandPDF()"><svg class="hi"><use href="#hi-document"/></svg> Download PDF</button>
+        <button class="btn-back" onclick="downloadBrandMarkdown()"><svg class="hi"><use href="#hi-document-text"/></svg> Download .md</button>
+      </div>`;
+
+      el.innerHTML = html;
+    }
+
+    // ═══ KEYBOARD NAV ═══
+    document.addEventListener('keydown', (e) => {
+      const tag = document.activeElement?.tagName;
+      const editable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.contentEditable === 'true';
+      if (e.key === 'Enter' && !e.shiftKey) {
+        const activeStep = document.querySelector('.step.active');
+        if (!activeStep) return;
+        const btn = activeStep.querySelector('.btn-continue:not(:disabled)');
+        if (btn) btn.click();
+      }
+      if (e.key === 'ArrowRight' && !editable) {
+        e.preventDefault();
+        const activeStep = document.querySelector('.step.active');
+        if (!activeStep) return;
+        const btn = activeStep.querySelector('.btn-continue:not(:disabled)');
+        if (btn) btn.click();
+      }
+      if (e.key === 'ArrowLeft' && !editable) {
+        e.preventDefault();
+        goBack();
+      }
+    });
+  </script>
+</body>
+</html>
